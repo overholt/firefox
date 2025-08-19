@@ -523,7 +523,6 @@ export class AppProvidedSearchEngine extends SearchEngine {
     let urlType = AppProvidedSearchEngine.URL_TYPE_MAP.get(type);
 
     if (!urlType) {
-      console.warn("unexpected engine url type.", type);
       return;
     }
 
