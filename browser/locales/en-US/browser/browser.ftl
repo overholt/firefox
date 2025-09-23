@@ -1090,6 +1090,10 @@ navbar-accessible =
 navbar-downloads =
     .label = Downloads
 
+navbar-qrcode =
+    .label = QR Code
+    .tooltiptext = Generate QR code for current page
+
 navbar-overflow-2 =
     .tooltiptext = More tools
 

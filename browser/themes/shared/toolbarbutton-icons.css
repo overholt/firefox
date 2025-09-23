@@ -59,6 +59,10 @@
   list-style-image: url("chrome://browser/skin/downloads/downloads.svg");
 }
 
+#qr-code-button {
+  list-style-image: url("chrome://browser/skin/qr-code.svg");
+}
+
 #open-file-button {
   list-style-image: url("chrome://browser/skin/open.svg");
 }
