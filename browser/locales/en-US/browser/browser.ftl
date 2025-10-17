@@ -999,6 +999,13 @@ toolbar-button-logins =
   .label = Passwords
   .tooltiptext = View and manage your saved passwords
 
+toolbar-button-qrcode =
+  .label = QR Code
+  .tooltiptext = Generate a QR code for the current page
+
+qrcode-copy-button = Copy Image
+qrcode-save-button = Save Image
+
 # Variables:
 #  $shortcut (String): keyboard shortcut to save a copy of the page
 toolbar-button-save-page =

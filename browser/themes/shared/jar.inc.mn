@@ -202,6 +202,7 @@
   skin/classic/browser/import.svg                     (../shared/icons/import.svg)
   skin/classic/browser/library.svg                    (../shared/icons/library.svg)
   skin/classic/browser/login.svg                      (../shared/icons/login.svg)
+  skin/classic/browser/qrcode.svg                     (../shared/qrcode.svg)
   skin/classic/browser/logo-android.svg               (../shared/icons/logo-android.svg)
   skin/classic/browser/logo-ios.svg                   (../shared/icons/logo-ios.svg)
   skin/classic/browser/mail.svg                       (../shared/icons/mail.svg)

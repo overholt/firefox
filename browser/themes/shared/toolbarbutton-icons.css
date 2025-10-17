@@ -189,6 +189,10 @@
   list-style-image: url("chrome://browser/skin/login.svg");
 }
 
+#qrcode-button {
+  list-style-image: url("chrome://browser/skin/qrcode.svg");
+}
+
 #sidebar-button {
   /* stylelint-disable-next-line media-query-no-invalid */
   @media not -moz-pref("sidebar.revamp") {

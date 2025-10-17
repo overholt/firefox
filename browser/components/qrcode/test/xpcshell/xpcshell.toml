@@ -1,0 +1,8 @@
+[DEFAULT]
+firefox-appdir = "browser"
+
+["test_QRCodeWorker_basic.js"]
+
+["test_QRCodeWorker_library.js"]
+
+["test_QRCodeGenerator_worker_integration.js"]
