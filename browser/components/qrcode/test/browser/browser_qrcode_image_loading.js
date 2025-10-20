@@ -208,8 +208,12 @@ add_task(async function test_qrcode_rapid_open_close() {
 
       await closeQRCodePanel();
 
-      // Brief pause between iterations
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait for panel to fully close before next iteration
+      await BrowserTestUtils.waitForCondition(() => {
+        let view = window.document.getElementById("PanelUI-qrcode");
+        let panel = view?.closest("panel");
+        return !panel || panel.state === "closed";
+      }, `Waiting for panel to close after iteration ${i + 1}`);
     }
   });
 });

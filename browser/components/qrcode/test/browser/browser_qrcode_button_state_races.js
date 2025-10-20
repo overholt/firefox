@@ -60,17 +60,19 @@ add_task(async function test_rapid_button_clicks() {
     for (let i = 0; i < 3; i++) {
       info(`Click ${i + 1}`);
       elements.copyButton.click();
-
-      // Brief pause between clicks
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // No artificial delay - test truly rapid clicks
 
       elements = getQRCodePanelElements();
       // Button should still be present and clickable
       ok(elements.copyButton, `Copy button should exist after click ${i + 1}`);
     }
 
-    // Wait for any feedback to show
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Wait for button to show feedback by checking for text change
+    await BrowserTestUtils.waitForCondition(() => {
+      elements = getQRCodePanelElements();
+      let label = elements.copyButton?.getAttribute("label") || elements.copyButton?.textContent;
+      return label === "Copied!" || label === "Copy Image";
+    }, "Waiting for button feedback to appear");
 
     elements = getQRCodePanelElements();
     // Button should still be in a valid state
@@ -110,8 +112,12 @@ add_task(async function test_panel_reopen_resets_buttons() {
     // Close panel
     await closeQRCodePanel();
 
-    // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Wait for panel to fully close
+    await BrowserTestUtils.waitForCondition(() => {
+      let view = window.document.getElementById("PanelUI-qrcode");
+      let panel = view?.closest("panel");
+      return !panel || panel.state === "closed";
+    }, "Waiting for panel to close");
 
     // Reopen panel
     await openQRCodePanel();

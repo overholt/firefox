@@ -93,10 +93,13 @@ add_task(async function test_qrcode_error_handling() {
   await BrowserTestUtils.withNewTab("about:blank", async browser => {
     await openQRCodePanel();
 
-    // Wait a bit to see what happens
-    await new Promise(resolve => setTimeout(resolve, 500));
-
+    // Wait for panel content to load (either error or QR code)
     let view = window.document.getElementById("PanelUI-qrcode");
+    await BrowserTestUtils.waitForCondition(() => {
+      let body = view.querySelector(".panel-subview-body");
+      return body && body.children.length > 0;
+    }, "Waiting for panel content to load");
+
     let body = view.querySelector(".panel-subview-body");
 
     if (body) {

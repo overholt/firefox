@@ -164,58 +164,53 @@ add_task(async function test_panel_tab_switching() {
  * Test panel cleanup on window unload
  */
 add_task(async function test_panel_window_unload() {
-  // Skip this test due to timeout issues with navigation
-  info("Skipping test_panel_window_unload due to navigation timeout issues");
-  return;
-  info("Testing panel cleanup on window operations");
+  info("Testing panel cleanup on window navigation");
 
   await BrowserTestUtils.withNewTab("https://example.com", async browser => {
     // Open panel
     await openQRCodePanel();
-    await waitForQRCodeLoad();
+    let elements = await waitForQRCodeLoad();
+    is(elements.qrcodeUrl?.textContent, "https://example.com/", "Initial URL should be correct");
 
-    // Simulate navigating away
+    // Get panel reference before navigation
+    let view = window.document.getElementById("PanelUI-qrcode");
+    let panel = view?.closest("panel");
+    ok(panel, "Panel should exist");
+
+    // Close panel before navigation to avoid race conditions
+    await closeQRCodePanel();
+
+    // Verify panel is closed
+    ok(panel.state === "closed", "Panel should be closed before navigation");
+    ok(!view.firstChild, "Panel view should be empty after close");
+
+    // Now navigate to a new page
     BrowserTestUtils.startLoadingURIString(browser, "https://example.org");
     await BrowserTestUtils.browserLoaded(browser, false, "https://example.org");
 
-    // Check panel state
-    let view = window.document.getElementById("PanelUI-qrcode");
-    let panel = view?.closest("panel");
-
-    // Panel might close on navigation
-    if (panel && panel.state === "closed") {
-      ok(true, "Panel closed on navigation");
-
-      // Verify cleanup happened
-      view = window.document.getElementById("PanelUI-qrcode");
-      ok(!view.firstChild, "Panel should be empty after navigation close");
-    } else if (panel && panel.state === "open") {
-      // Panel stayed open, close it manually
-      await closeQRCodePanel();
-    }
-
-    // Verify we can still open panel on new page - simplified test
+    // Verify we can open panel on new page
     await openQRCodePanel();
 
-    // Just check that panel opened without crashing
-    view = window.document.getElementById("PanelUI-qrcode");
-    ok(view, "Panel view exists after navigation");
+    // Wait for QR code to load with new URL
+    elements = await waitForQRCodeLoad();
 
-    // Give it a moment to populate
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Verify the new URL is shown
+    is(
+      elements.qrcodeUrl?.textContent,
+      "https://example.org/",
+      "Should show new URL after navigation"
+    );
 
-    // Check if any elements are present
-    let elements = getQRCodePanelElements();
-    if (elements && elements.qrcodeUrl) {
-      is(
-        elements.qrcodeUrl.textContent,
-        "https://example.org/",
-        "Should show new URL"
-      );
-    } else {
-      info("QR code may still be generating after navigation");
-    }
+    // Verify panel elements are correctly populated
+    ok(elements.qrcodeImage, "QR code image should exist after navigation");
+    ok(elements.copyButton, "Copy button should exist after navigation");
+    ok(elements.saveButton, "Save button should exist after navigation");
 
+    // Close panel cleanly
     await closeQRCodePanel();
+
+    // Final verification
+    view = window.document.getElementById("PanelUI-qrcode");
+    ok(!view.firstChild, "Panel should be empty after final close");
   });
 });

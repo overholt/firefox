@@ -37,8 +37,10 @@ add_task(async function test_rapid_panel_open_close() {
         panel.hidePopup();
       }
 
-      // Brief pause between cycles
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Wait for panel to actually close before next cycle
+      await BrowserTestUtils.waitForCondition(() => {
+        return !panel || panel.state === "closed";
+      }, `Waiting for panel to close on cycle ${i + 1}`);
     }
 
     // Finally open panel and verify it works correctly
@@ -67,8 +69,7 @@ add_task(async function test_rapid_button_clicks() {
     info("Rapid clicking copy button");
     for (let i = 0; i < 10; i++) {
       elements.copyButton.click();
-      // Very brief pause
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // No artificial delay - test truly rapid clicks
     }
 
     // Panel should still be functional
@@ -109,13 +110,8 @@ add_task(async function test_rapid_tab_switch_with_panel() {
   // Rapidly switch tabs while panel is open
   for (let i = 0; i < 3; i++) {
     await BrowserTestUtils.switchTab(gBrowser, tab1);
-    await new Promise(resolve => setTimeout(resolve, 50));
-
     await BrowserTestUtils.switchTab(gBrowser, tab2);
-    await new Promise(resolve => setTimeout(resolve, 50));
-
     await BrowserTestUtils.switchTab(gBrowser, tab3);
-    await new Promise(resolve => setTimeout(resolve, 50));
   }
 
   // Panel might have closed during rapid switching
@@ -161,9 +157,7 @@ add_task(async function test_rapid_navigation_with_panel() {
     for (let url of urls) {
       BrowserTestUtils.startLoadingURIString(browser, url);
       await BrowserTestUtils.browserLoaded(browser, false, url);
-
-      // Brief pause
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // No artificial delay - test truly rapid navigation
     }
 
     // Panel might have closed or updated
