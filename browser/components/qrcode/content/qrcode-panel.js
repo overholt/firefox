@@ -89,6 +89,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const successText = await document.l10n.formatValue("qrcode-copy-success");
         copyButton.textContent = successText;
 
+        // FIXME: Using setTimeout for button feedback may be problematic if the panel
+        // closes before the timeout fires. Consider alternative UX (auto-close panel,
+        // toast notification, or instant reset).
         // Track timeout for cleanup
         copyButtonTimeout = setTimeout(async () => {
           document.l10n.setAttributes(copyButton, "qrcode-copy-button");
@@ -164,6 +167,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const successText = await document.l10n.formatValue("qrcode-save-success");
         saveButton.textContent = successText;
 
+        // FIXME: Using setTimeout for button feedback may be problematic if the panel
+        // closes before the timeout fires. Consider alternative UX (auto-close panel,
+        // toast notification, or instant reset).
         // Track timeout for cleanup
         saveButtonTimeout = setTimeout(async () => {
           document.l10n.setAttributes(saveButton, "qrcode-save-button");
