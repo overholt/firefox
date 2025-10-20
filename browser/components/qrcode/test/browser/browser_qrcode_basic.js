@@ -65,22 +65,24 @@ add_task(async function test_qrcode_basic_functionality() {
       "Save button should have correct text"
     );
 
-    // Step 5: Test copy button - skip the feedback test due to navigator issue
-    info("Step 5: Testing copy button exists");
+    // Step 5: Test copy button
+    info("Step 5: Testing copy button");
 
-    // The copy button has an error in the current implementation:
-    // "navigator is not defined" in CustomizableWidgets.sys.mjs
-    // This is a bug in the QR code implementation, not the test
-    // For now, just verify the button exists and can be clicked
     ok(elements.copyButton, "Copy button should exist");
 
-    // Try clicking but don't wait for feedback due to the navigator error
-    try {
-      elements.copyButton.click();
-      info("Copy button clicked (may have errors due to navigator issue)");
-    } catch (e) {
-      info("Copy button click failed: " + e);
-    }
+    // Click the copy button and wait for success feedback
+    elements.copyButton.click();
+
+    // Wait for the button label to change to success message
+    await BrowserTestUtils.waitForCondition(() => {
+      return elements.copyButton.getAttribute("label") === "Copied!";
+    }, "Waiting for copy success feedback");
+
+    is(
+      elements.copyButton.getAttribute("label"),
+      "Copied!",
+      "Copy button should show success message"
+    );
 
     // Step 6: Close panel
     info("Step 6: Closing panel");

@@ -569,7 +569,7 @@ export const CustomizableWidgets = [
             const response = await fetch(qrCodeDataUri);
             const blob = await response.blob();
             const item = new ClipboardItem({ "image/png": blob });
-            await navigator.clipboard.write([item]);
+            await window.navigator.clipboard.write([item]);
             const successText = await document.l10n.formatValue("qrcode-copy-success");
             copyButton.setAttribute("label", successText);
             setTimeout(() => {
