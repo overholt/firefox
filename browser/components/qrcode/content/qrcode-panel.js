@@ -86,18 +86,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         await navigator.clipboard.write([item]);
 
         // Show feedback
-        copyButton.textContent = "Copied!";
+        const successText = await document.l10n.formatValue("qrcode-copy-success");
+        copyButton.textContent = successText;
 
         // Track timeout for cleanup
-        copyButtonTimeout = setTimeout(() => {
-          copyButton.textContent = "Copy Image";
+        copyButtonTimeout = setTimeout(async () => {
+          document.l10n.setAttributes(copyButton, "qrcode-copy-button");
           copyButton.disabled = false;
           saveButton.disabled = false;
           copyButtonTimeout = null;
         }, 2000);
       } catch (e) {
         lazy.logConsole.error("Failed to copy QR code:", e);
-        alert("Failed to copy QR code to clipboard");
+        const errorText = await document.l10n.formatValue("qrcode-copy-error");
+        alert(errorText);
         copyButton.disabled = false;
         saveButton.disabled = false;
       }
@@ -135,8 +137,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Show file picker
         const { nsIFilePicker } = Ci;
         const fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
-        fp.init(window, "Save QR Code", nsIFilePicker.modeSave);
-        fp.appendFilter("PNG Image", "*.png");
+        const saveTitle = await document.l10n.formatValue("qrcode-save-title");
+        const filterLabel = await document.l10n.formatValue("qrcode-save-filter");
+        fp.init(window, saveTitle, nsIFilePicker.modeSave);
+        fp.appendFilter(filterLabel, "*.png");
         fp.defaultString = filename;
         fp.defaultExtension = "png";
 
@@ -157,18 +161,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         await download.start();
 
         // Show feedback
-        saveButton.textContent = "Saved!";
+        const successText = await document.l10n.formatValue("qrcode-save-success");
+        saveButton.textContent = successText;
 
         // Track timeout for cleanup
-        saveButtonTimeout = setTimeout(() => {
-          saveButton.textContent = "Save Image";
+        saveButtonTimeout = setTimeout(async () => {
+          document.l10n.setAttributes(saveButton, "qrcode-save-button");
           saveButton.disabled = false;
           copyButton.disabled = false;
           saveButtonTimeout = null;
         }, 2000);
       } catch (e) {
         lazy.logConsole.error("Failed to save QR code:", e);
-        alert("Failed to save QR code");
+        const errorText = await document.l10n.formatValue("qrcode-save-error");
+        alert(errorText);
         saveButton.disabled = false;
         copyButton.disabled = false;
       }
@@ -176,7 +182,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (e) {
     lazy.logConsole.error("Failed to generate QR code:", e);
     loadingMessage.classList.add("hidden");
-    errorMessage.textContent = "Failed to generate QR code. Please try again.";
     errorMessage.classList.remove("hidden");
   }
 });

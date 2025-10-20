@@ -10,8 +10,9 @@
       http-equiv="Content-Security-Policy"
       content="default-src chrome:; object-src 'none'"
     />
-    <title>QR Code</title>
+    <title data-l10n-id="qrcode-panel-title">QR Code</title>
     <link rel="stylesheet" href="chrome://global/skin/in-content/common.css" />
+    <link rel="localization" href="browser/browser.ftl" />
     <style>
       :root {
         --panel-width: 300px;
@@ -79,9 +80,9 @@
   </head>
   <body>
     <div id="qrcode-container">
-      <div id="loading-message">Generating QR code...</div>
-      <div id="error-message" class="hidden"></div>
-      <img id="qrcode-image" class="hidden" alt="QR Code" />
+      <div id="loading-message" data-l10n-id="qrcode-panel-loading">Generating QR code…</div>
+      <div id="error-message" class="hidden" data-l10n-id="qrcode-panel-error"></div>
+      <img id="qrcode-image" class="hidden" data-l10n-id="qrcode-panel-image" alt="QR Code" />
       <div id="qrcode-url" class="hidden"></div>
       <div id="qrcode-actions" class="hidden">
         <button

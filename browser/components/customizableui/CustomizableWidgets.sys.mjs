@@ -563,26 +563,29 @@ export const CustomizableWidgets = [
 
         // Add Copy button
         let copyButton = document.createXULElement("button");
-        copyButton.setAttribute("label", "Copy Image");
+        document.l10n.setAttributes(copyButton, "qrcode-copy-button");
         copyButton.addEventListener("click", async () => {
           try {
             const response = await fetch(qrCodeDataUri);
             const blob = await response.blob();
             const item = new ClipboardItem({ "image/png": blob });
             await navigator.clipboard.write([item]);
-            copyButton.setAttribute("label", "Copied!");
+            const successText = await document.l10n.formatValue("qrcode-copy-success");
+            copyButton.setAttribute("label", successText);
             setTimeout(() => {
-              copyButton.setAttribute("label", "Copy Image");
+              document.l10n.setAttributes(copyButton, "qrcode-copy-button");
             }, 2000);
           } catch (e) {
             lazy.qrcodeLog.error("Failed to copy:", e);
+            const errorText = await document.l10n.formatValue("qrcode-copy-error");
+            window.alert(errorText);
           }
         });
         buttonBox.appendChild(copyButton);
 
         // Add Save button
         let saveButton = document.createXULElement("button");
-        saveButton.setAttribute("label", "Save Image");
+        document.l10n.setAttributes(saveButton, "qrcode-save-button");
         saveButton.addEventListener("click", async () => {
           try {
             const title = browser.contentTitle || "qrcode";
@@ -591,8 +594,10 @@ export const CustomizableWidgets = [
 
             const { nsIFilePicker } = Ci;
             const fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
-            fp.init(window, "Save QR Code", nsIFilePicker.modeSave);
-            fp.appendFilter("PNG Image", "*.png");
+            const saveTitle = await document.l10n.formatValue("qrcode-save-title");
+            const filterLabel = await document.l10n.formatValue("qrcode-save-filter");
+            fp.init(window, saveTitle, nsIFilePicker.modeSave);
+            fp.appendFilter(filterLabel, "*.png");
             fp.defaultString = filename;
             fp.defaultExtension = "png";
 
@@ -612,12 +617,15 @@ export const CustomizableWidgets = [
 
             await download.start();
 
-            saveButton.setAttribute("label", "Saved!");
+            const successText = await document.l10n.formatValue("qrcode-save-success");
+            saveButton.setAttribute("label", successText);
             setTimeout(() => {
-              saveButton.setAttribute("label", "Save Image");
+              document.l10n.setAttributes(saveButton, "qrcode-save-button");
             }, 2000);
           } catch (e) {
             lazy.qrcodeLog.error("Failed to save:", e);
+            const errorText = await document.l10n.formatValue("qrcode-save-error");
+            window.alert(errorText);
           }
         });
         buttonBox.appendChild(saveButton);
@@ -629,7 +637,7 @@ export const CustomizableWidgets = [
           body.firstChild.remove();
         }
         let errorLabel = document.createXULElement("label");
-        errorLabel.textContent = "Failed to generate QR code. Please try again.";
+        document.l10n.setAttributes(errorLabel, "qrcode-panel-error");
         errorLabel.style.textAlign = "center";
         errorLabel.style.color = "red";
         body.appendChild(errorLabel);

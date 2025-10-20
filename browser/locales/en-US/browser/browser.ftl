@@ -1003,8 +1003,21 @@ toolbar-button-qrcode =
   .label = QR Code
   .tooltiptext = Generate a QR code for the current page
 
+qrcode-panel-title = QR Code
+qrcode-panel-image =
+  .alt = QR Code
+qrcode-panel-loading = Generating QR code…
+qrcode-panel-error = Failed to generate QR code. Please try again.
+
 qrcode-copy-button = Copy Image
+qrcode-copy-success = Copied!
+qrcode-copy-error = Failed to copy QR code to clipboard
+
 qrcode-save-button = Save Image
+qrcode-save-title = Save QR Code
+qrcode-save-filter = PNG Image
+qrcode-save-success = Saved!
+qrcode-save-error = Failed to save QR code
 
 # Variables:
 #  $shortcut (String): keyboard shortcut to save a copy of the page
