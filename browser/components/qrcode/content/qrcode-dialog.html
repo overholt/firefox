@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+
+<html xmlns="http://www.w3.org/1999/xhtml" id="qrcode-dialog">
+<head>
+  <meta charset="utf-8"/>
+  <title data-l10n-id="qrcode-dialog-title">QR Code</title>
+  <link rel="stylesheet" href="chrome://global/skin/global.css"/>
+  <link rel="stylesheet" href="chrome://browser/content/qrcode/qrcode-dialog.css"/>
+  <link rel="localization" href="browser/browser.ftl"/>
+  <script src="chrome://browser/content/qrcode/qrcode-dialog.js"></script>
+</head>
+<body>
+  <div id="qrcode-dialog-content">
+    <!-- Loading state -->
+    <div id="loading-container" class="container">
+      <span data-l10n-id="qrcode-panel-loading">Generating QR code…</span>
+    </div>
+
+    <!-- Error state -->
+    <div id="error-container" class="container" hidden="true">
+      <span data-l10n-id="qrcode-panel-error">Failed to generate QR code. Please try again.</span>
+    </div>
+
+    <!-- Success state -->
+    <div id="success-container" class="container" hidden="true">
+      <div class="qrcode-content">
+        <img id="qrcode-image" alt="QR Code"/>
+        <div id="qrcode-url"></div>
+      </div>
+
+      <div id="button-container">
+        <button id="copy-button" data-l10n-id="qrcode-copy-button">Copy Image</button>
+        <button id="save-button" data-l10n-id="qrcode-save-button">Save Image</button>
+        <button id="close-button" data-l10n-id="qrcode-close-button">Close</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

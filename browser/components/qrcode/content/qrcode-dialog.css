@@ -1,0 +1,88 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 400px;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+#qrcode-dialog-content {
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+}
+
+.container[hidden] {
+  display: none !important;
+}
+
+.qrcode-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  justify-content: center;
+}
+
+#qrcode-image {
+  width: 256px;
+  height: 256px;
+  border: 1px solid var(--in-content-border-color, #d7d7db);
+  border-radius: 4px;
+  background: white;
+  padding: 10px;
+}
+
+#qrcode-url {
+  margin-top: 10px;
+  max-width: 350px;
+  font-size: 0.9em;
+  color: var(--text-color-deemphasized, #737373);
+  text-align: center;
+  word-break: break-all;
+}
+
+#button-container {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+#button-container button {
+  min-width: 100px;
+  padding: 5px 15px;
+}
+
+#loading-container span,
+#error-container span {
+  font-size: 1.1em;
+}
+
+#error-container span {
+  color: var(--error-text-color, #d70022);
+}
+
+/* Feedback states for buttons */
+button.success {
+  color: var(--success-color, #058b00);
+}
+
+button.error {
+  color: var(--error-text-color, #d70022);
+}

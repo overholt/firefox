@@ -1018,6 +1018,8 @@ qrcode-save-title = Save QR Code
 qrcode-save-filter = PNG Image
 qrcode-save-success = Saved!
 qrcode-save-error = Failed to save QR code
+qrcode-dialog-title = QR Code
+qrcode-close-button = Close
 
 # Variables:
 #  $shortcut (String): keyboard shortcut to save a copy of the page

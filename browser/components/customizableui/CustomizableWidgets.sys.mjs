@@ -493,6 +493,8 @@ export const CustomizableWidgets = [
       lazy.LoginHelper.openPasswordManager(window, { entryPoint: "Toolbar" });
     },
   },
+  // QR Code button disabled - functionality moved to File > Share menu
+  /*
   {
     id: "qrcode-button",
     type: "view",
@@ -651,6 +653,7 @@ export const CustomizableWidgets = [
       }
     },
   },
+  */
 ];
 
 if (Services.prefs.getBoolPref("identity.fxaccounts.enabled")) {

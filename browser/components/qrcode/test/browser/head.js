@@ -4,24 +4,12 @@
 
 "use strict";
 
-// Ensure QR code widget is added to toolbar for tests
+// Setup for QR code tests
+// Note: QR code is now accessed via File > Share menu on macOS
+// The toolbar button has been disabled
 add_setup(async function () {
-  // CustomizableUI should be available in browser chrome context
-  if (typeof CustomizableUI === "undefined") {
-    // If not available, try to get it from window
-    const { CustomizableUI } = window;
-  }
-
-  // Add the QR code button to the navbar if it's not already there
-  let placement = CustomizableUI.getPlacementOfWidget("qrcode-button");
-  if (!placement || placement.area !== CustomizableUI.AREA_NAVBAR) {
-    CustomizableUI.addWidgetToArea("qrcode-button", CustomizableUI.AREA_NAVBAR);
-  }
-
-  registerCleanupFunction(() => {
-    // Reset CustomizableUI to clean state
-    CustomizableUI.reset();
-  });
+  // No specific setup needed for menu-based tests
+  info("QR code test setup complete");
 });
 
 /**

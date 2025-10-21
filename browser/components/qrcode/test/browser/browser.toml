@@ -16,3 +16,6 @@ support-files = ["head.js"]
 ["browser_qrcode_panel_lifecycle.js"]
 
 ["browser_qrcode_image_loading.js"]
+
+["browser_qrcode_share_menu.js"]
+skip-if = ["os != 'mac'"]  # macOS-specific test for File > Share menu

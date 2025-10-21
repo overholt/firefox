@@ -11,6 +11,10 @@ const APPLE_COPY_LINK = "com.apple.share.CopyLink.invite";
 
 let lazy = {};
 
+ChromeUtils.defineESModuleGetters(lazy, {
+  QRCodeGenerator: "resource:///modules/QRCodeGenerator.sys.mjs",
+});
+
 XPCOMUtils.defineLazyServiceGetters(lazy, {
   MacSharingService: [
     "@mozilla.org/widget/macsharingservice;1",
@@ -116,6 +120,44 @@ class SharingUtilsCls {
   }
 
   /**
+   * Shows a dialog window with the QR code for the given URL.
+   */
+  async #showQRCodeDialog(win, url, title) {
+    // Generate the QR code
+    let qrCodeDataURI;
+    try {
+      qrCodeDataURI = await lazy.QRCodeGenerator.generateQRCode(url, win.document);
+    } catch (error) {
+      console.error("Failed to generate QR code:", error);
+      // Show error dialog
+      Services.prompt.alert(
+        win,
+        "QR Code Error",
+        "Failed to generate QR code. Please try again."
+      );
+      return;
+    }
+
+    // Open the QR code dialog
+    let params = {
+      url,
+      title: title || url,
+      qrCodeDataURI,
+    };
+
+    try {
+      win.openDialog(
+        "chrome://browser/content/qrcode/qrcode-dialog.html",
+        "qrcode-dialog",
+        "chrome,dialog,centerscreen,resizable=no",
+        params
+      );
+    } catch (dialogError) {
+      console.error("Failed to open dialog:", dialogError);
+    }
+  }
+
+  /**
    * Get the sharing data for a given DOM node.
    */
   getDataToShare(node) {
@@ -173,6 +215,21 @@ class SharingUtilsCls {
       menuPopup.appendChild(item);
     }
 
+    // Add QR Code generation menu item
+    let qrCodeItem = document.createXULElement("menuitem");
+    qrCodeItem.classList.add("menuitem-iconic", "share-qrcode-item");
+    document.l10n.setAttributes(qrCodeItem, "menu-file-share-qrcode");
+    qrCodeItem.setAttribute("image", "chrome://browser/skin/qrcode.svg");
+    if (!shouldEnable) {
+      qrCodeItem.setAttribute("disabled", "true");
+    }
+    menuPopup.appendChild(qrCodeItem);
+
+    // Add separator between QR code and native sharing services
+    if (services.length > 0) {
+      menuPopup.appendChild(document.createXULElement("menuseparator"));
+    }
+
     services.forEach(share => {
       let item = document.createXULElement("menuitem");
       item.classList.add("menuitem-iconic");
@@ -191,13 +248,30 @@ class SharingUtilsCls {
     menuPopup.appendChild(moreItem);
 
     menuPopup.addEventListener("command", this);
+
     menuPopup.parentNode
       .closest("menupopup")
       .addEventListener("popuphiding", this);
+
     menuPopup.setAttribute("data-initialized", true);
   }
 
   onShareURLCommand(event) {
+    // Handle QR code item first, since it might be in a submenu
+    if (event.target.classList.contains("share-qrcode-item")) {
+      // Find the parent share menu item to get the data
+      let shareMenu = event.target.closest("menupopup")?.parentNode;
+      if (!shareMenu || !shareMenu.classList.contains("share-tab-url-item")) {
+        console.error("Could not find parent share menu");
+        return;
+      }
+      let { gURLBar } = shareMenu.ownerGlobal;
+      let { urlToShare, titleToShare } = this.getDataToShare(shareMenu);
+      let currentURI = gURLBar.makeURIReadable(urlToShare).displaySpec;
+      this.#showQRCodeDialog(shareMenu.ownerGlobal, currentURI, titleToShare);
+      return;
+    }
+
     // Only call sharing services for the "Share" menu item. These services
     // are accessed from a submenu popup for MacOS or the "Share" menu item
     // for Windows. Use .closest() as a hack to find either the item itself
