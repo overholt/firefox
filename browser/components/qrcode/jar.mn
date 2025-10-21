@@ -3,8 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 browser.jar:
-    content/browser/qrcode/qrcode-panel.html                (content/qrcode-panel.html)
-    content/browser/qrcode/qrcode-panel.js                  (content/qrcode-panel.js)
     content/browser/qrcode/qrcode-dialog.html               (content/qrcode-dialog.html)
     content/browser/qrcode/qrcode-dialog.css                (content/qrcode-dialog.css)
     content/browser/qrcode/qrcode-dialog.js                 (content/qrcode-dialog.js)

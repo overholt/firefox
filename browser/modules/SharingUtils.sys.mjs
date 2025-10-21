@@ -248,11 +248,9 @@ class SharingUtilsCls {
     menuPopup.appendChild(moreItem);
 
     menuPopup.addEventListener("command", this);
-
     menuPopup.parentNode
       .closest("menupopup")
       .addEventListener("popuphiding", this);
-
     menuPopup.setAttribute("data-initialized", true);
   }
 

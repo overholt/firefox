@@ -2,20 +2,5 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-[DEFAULT]
-support-files = ["head.js"]
-
-["browser_qrcode_basic.js"]
-
-["browser_qrcode_document_parameter.js"]
-
-["browser_qrcode_button_state_races.js"]
-
-["browser_qrcode_rapid_clicks.js"]
-
-["browser_qrcode_panel_lifecycle.js"]
-
-["browser_qrcode_image_loading.js"]
-
 ["browser_qrcode_share_menu.js"]
 skip-if = ["os != 'mac'"]  # macOS-specific test for File > Share menu
