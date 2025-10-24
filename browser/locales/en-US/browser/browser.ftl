@@ -999,6 +999,20 @@ toolbar-button-logins =
   .label = Passwords
   .tooltiptext = View and manage your saved passwords
 
+qrcode-panel-loading = Generating QR code…
+qrcode-panel-error = Failed to generate QR code. Please try again.
+
+qrcode-copy-button = Copy Image
+qrcode-copy-success = Copied!
+qrcode-copy-error = Failed to copy QR code to clipboard
+
+qrcode-save-button = Save Image
+qrcode-save-title = Save QR Code
+qrcode-save-success = Saved!
+qrcode-save-error = Failed to save QR code
+qrcode-dialog-title = QR Code
+qrcode-close-button = Close
+
 # Variables:
 #  $shortcut (String): keyboard shortcut to save a copy of the page
 toolbar-button-save-page =
