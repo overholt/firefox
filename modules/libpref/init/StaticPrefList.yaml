@@ -1050,6 +1050,12 @@
   value: true
   mirror: always
 
+# Enable QR code generation feature in the identity panel (Nightly only)
+- name: browser.qrcode.enabled
+  type: bool
+  value: @IS_NIGHTLY_BUILD@
+  mirror: always
+
 - name: browser.cache.disk.enable
   type: RelaxedAtomicBool
   value: true

@@ -90,6 +90,17 @@
         </hbox>
       </vbox>
 
+      <!-- Share QR Code Button -->
+      <vbox id="identity-popup-qrcode-footer"
+            class="panel-subview-footer-button"
+            hidden="true">
+        <toolbarseparator/>
+        <toolbarbutton id="identity-popup-qrcode-button"
+                data-l10n-id="identity-share-qrcode"
+                class="subviewbutton subviewbutton-nav"
+                closemenu="none"/>
+      </vbox>
+
       <!-- Clear Site Data Button -->
       <vbox id="identity-popup-clear-sitedata-footer"
             class="panel-subview-footer-button"
@@ -114,6 +125,62 @@
                 class="subviewbutton panel-subview-footer-button"/>
       </vbox>
 
+    </panelview>
+
+    <!-- QR Code SubView -->
+    <panelview id="identity-popup-qrcodeView"
+               class="PanelUI-subView"
+               role="document">
+      <box class="panel-header">
+        <html:h1>
+          <html:span data-l10n-id="identity-qrcode-header"/>
+        </html:h1>
+      </box>
+      <toolbarseparator/>
+      <vbox class="panel-subview-body">
+        <!-- Loading State -->
+        <vbox id="identity-popup-qrcode-loading"
+              class="identity-popup-qrcode-state"
+              align="center"
+              hidden="true">
+          <html:img class="identity-popup-qrcode-spinner"
+                    src="chrome://browser/skin/tabbrowser/tab-connecting.png"
+                    alt=""/>
+          <description data-l10n-id="identity-qrcode-loading"/>
+        </vbox>
+
+        <!-- Error State -->
+        <vbox id="identity-popup-qrcode-error"
+              class="identity-popup-qrcode-state"
+              align="center"
+              hidden="true">
+          <description data-l10n-id="identity-qrcode-error"/>
+          <toolbarbutton id="identity-popup-qrcode-try-again"
+                  data-l10n-id="identity-qrcode-try-again"
+                  class="subviewbutton"/>
+        </vbox>
+
+        <!-- Success State -->
+        <vbox id="identity-popup-qrcode-success"
+              class="identity-popup-qrcode-state"
+              align="center"
+              hidden="true">
+          <html:img id="identity-popup-qrcode-image"
+                    class="identity-popup-qrcode-image"
+                    alt=""/>
+          <description id="identity-popup-qrcode-url"
+                       class="identity-popup-qrcode-url"/>
+
+          <hbox class="identity-popup-qrcode-buttons">
+            <toolbarbutton id="identity-popup-qrcode-copy"
+                    data-l10n-id="identity-qrcode-copy"
+                    class="subviewbutton"/>
+            <toolbarbutton id="identity-popup-qrcode-save"
+                    data-l10n-id="identity-qrcode-save"
+                    class="subviewbutton"/>
+          </hbox>
+        </vbox>
+      </vbox>
     </panelview>
   </panelmultiview>
 </panel>

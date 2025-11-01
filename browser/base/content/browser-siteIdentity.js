@@ -4,6 +4,14 @@
 
 ChromeUtils.defineESModuleGetters(this, {
   ExtensionUtils: "resource://gre/modules/ExtensionUtils.sys.mjs",
+  QRCodeGenerator: "resource:///modules/QRCodeGenerator.sys.mjs",
+});
+
+ChromeUtils.defineLazyGetter(this, "gIdentityLog", function () {
+  return console.createInstance({
+    prefix: "QR Code Generator",
+    maxLogLevel: "Warn",
+  });
 });
 
 /**
@@ -215,6 +223,18 @@ var gIdentityHandler = {
       "identity-popup-security-httpsonlymode-menulist": () => {
         this.changeHttpsOnlyPermission();
       },
+      "identity-popup-qrcode-button": () => {
+        this.showQRCodeSubView();
+      },
+      "identity-popup-qrcode-try-again": () => {
+        this.generateQRCode();
+      },
+      "identity-popup-qrcode-copy": () => {
+        this.copyQRCode();
+      },
+      "identity-popup-qrcode-save": () => {
+        this.saveQRCode();
+      },
       "identity-popup-clear-sitedata-button": event => {
         this.clearSiteData(event);
       },
@@ -354,6 +374,48 @@ var gIdentityHandler = {
       "identity-popup-clear-sitedata-footer"
     ));
   },
+  get _qrcodeFooter() {
+    delete this._qrcodeFooter;
+    return (this._qrcodeFooter = document.getElementById(
+      "identity-popup-qrcode-footer"
+    ));
+  },
+  get _identityPopupQRCodeView() {
+    delete this._identityPopupQRCodeView;
+    return (this._identityPopupQRCodeView = document.getElementById(
+      "identity-popup-qrcodeView"
+    ));
+  },
+  get _qrcodeLoadingState() {
+    delete this._qrcodeLoadingState;
+    return (this._qrcodeLoadingState = document.getElementById(
+      "identity-popup-qrcode-loading"
+    ));
+  },
+  get _qrcodeErrorState() {
+    delete this._qrcodeErrorState;
+    return (this._qrcodeErrorState = document.getElementById(
+      "identity-popup-qrcode-error"
+    ));
+  },
+  get _qrcodeSuccessState() {
+    delete this._qrcodeSuccessState;
+    return (this._qrcodeSuccessState = document.getElementById(
+      "identity-popup-qrcode-success"
+    ));
+  },
+  get _qrcodeImage() {
+    delete this._qrcodeImage;
+    return (this._qrcodeImage = document.getElementById(
+      "identity-popup-qrcode-image"
+    ));
+  },
+  get _qrcodeUrl() {
+    delete this._qrcodeUrl;
+    return (this._qrcodeUrl = document.getElementById(
+      "identity-popup-qrcode-url"
+    ));
+  },
   get _insecureConnectionTextEnabled() {
     delete this._insecureConnectionTextEnabled;
     XPCOMUtils.defineLazyPreferenceGetter(
@@ -484,6 +546,117 @@ var gIdentityHandler = {
     // Elements of hidden views have -moz-user-focus:ignore but setting that
     // per CSS selector doesn't blur a focused element in those hidden views.
     Services.focus.clearFocus(window);
+  },
+
+  async showQRCodeSubView() {
+    // Check if the feature is enabled
+    if (!Services.prefs.getBoolPref("browser.qrcode.enabled", false)) {
+      gIdentityLog.warn("QR code feature is disabled");
+      return;
+    }
+
+    this._identityPopupMultiView.showSubView(
+      "identity-popup-qrcodeView",
+      document.getElementById("identity-popup-qrcode-button")
+    );
+
+    // Elements of hidden views have -moz-user-focus:ignore but setting that
+    // per CSS selector doesn't blur a focused element in those hidden views.
+    Services.focus.clearFocus(window);
+
+    // Generate the QR code
+    await this.generateQRCode();
+  },
+
+  async generateQRCode() {
+    // Show loading state
+    this._qrcodeLoadingState.hidden = false;
+    this._qrcodeErrorState.hidden = true;
+    this._qrcodeSuccessState.hidden = true;
+
+    try {
+      const url = gBrowser.currentURI.spec;
+      const qrCodeDataURI = await QRCodeGenerator.generateQRCode(url, document);
+
+      // Show success state
+      this._qrcodeImage.src = qrCodeDataURI;
+      this._qrcodeUrl.textContent = url;
+      this._qrcodeLoadingState.hidden = true;
+      this._qrcodeSuccessState.hidden = false;
+
+      // Store for copy/save operations
+      this._currentQRCodeDataURI = qrCodeDataURI;
+      this._currentQRCodeURL = url;
+    } catch (error) {
+      gIdentityLog.error("Failed to generate QR code:", error);
+      // Show error state
+      this._qrcodeLoadingState.hidden = true;
+      this._qrcodeErrorState.hidden = false;
+    }
+  },
+
+  async copyQRCode() {
+    if (!this._currentQRCodeDataURI) {
+      return;
+    }
+
+    try {
+      // Convert data URI to blob
+      const response = await fetch(this._currentQRCodeDataURI);
+      const blob = await response.blob();
+
+      // Copy to clipboard
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          [blob.type]: blob,
+        }),
+      ]);
+    } catch (error) {
+      gIdentityLog.error("Failed to copy QR code:", error);
+    }
+  },
+
+  async saveQRCode() {
+    if (!this._currentQRCodeDataURI) {
+      return;
+    }
+
+    try {
+      // Get localized strings
+      const [title, filterLabel] = await document.l10n.formatValues([
+        { id: "identity-qrcode-file-picker-title" },
+        { id: "identity-qrcode-file-picker-filter" },
+      ]);
+
+      const fp = Cc["@mozilla.org/filepicker;1"].createInstance(
+        Ci.nsIFilePicker
+      );
+      fp.init(window.browsingContext, title, Ci.nsIFilePicker.modeSave);
+      fp.appendFilter(filterLabel, "*.png");
+      fp.defaultString = "qrcode.png";
+      fp.defaultExtension = "png";
+
+      const result = await new Promise(resolve => fp.open(resolve));
+      if (
+        result != Ci.nsIFilePicker.returnOK &&
+        result != Ci.nsIFilePicker.returnReplace
+      ) {
+        return;
+      }
+
+      // Convert data URI to binary data
+      const [, base64] = this._currentQRCodeDataURI.split(",");
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      // Write to file
+      await IOUtils.write(fp.file.path, bytes);
+    } catch (error) {
+      gIdentityLog.error("Failed to save QR code:", error);
+    }
   },
 
   removeCertException() {
@@ -984,6 +1157,12 @@ var gIdentityHandler = {
         identityPopupPanelView.setAttribute("footerVisible", hasData);
       });
     }
+
+    // Show the QR code button for http(s) URLs (if feature is enabled)
+    this._qrcodeFooter.hidden = !(
+      Services.prefs.getBoolPref("browser.qrcode.enabled", false) &&
+      (this._uri.schemeIs("http") || this._uri.schemeIs("https"))
+    );
 
     let customRoot = false;
 

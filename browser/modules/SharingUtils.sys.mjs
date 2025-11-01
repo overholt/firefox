@@ -11,6 +11,13 @@ const APPLE_COPY_LINK = "com.apple.share.CopyLink.invite";
 
 let lazy = {};
 
+ChromeUtils.defineLazyGetter(lazy, "logConsole", function () {
+  return console.createInstance({
+    prefix: "SharingUtils",
+    maxLogLevel: "Warn",
+  });
+});
+
 XPCOMUtils.defineLazyServiceGetters(lazy, {
   MacSharingService: [
     "@mozilla.org/widget/macsharingservice;1",
@@ -116,6 +123,63 @@ class SharingUtilsCls {
   }
 
   /**
+   * Opens the identity panel and shows the QR code subview.
+   */
+  async #showQRCodeInIdentityPanel(win) {
+    // Check if the feature is enabled
+    if (!Services.prefs.getBoolPref("browser.qrcode.enabled", false)) {
+      lazy.logConsole.warn("QR code feature is disabled");
+      return;
+    }
+
+    // Access gIdentityHandler from the window
+    let { gIdentityHandler } = win;
+    if (!gIdentityHandler) {
+      lazy.logConsole.error("gIdentityHandler not available");
+      return;
+    }
+
+    // Initialize and open the identity popup if it's not already open
+    gIdentityHandler._initializePopup();
+
+    const identityPopup = gIdentityHandler._identityPopup;
+    if (identityPopup.state !== "open" && identityPopup.state !== "showing") {
+      // Refresh the popup content
+      gIdentityHandler.refreshIdentityPopup();
+
+      // Wait for the panel to be shown using a promise
+      const popupShownPromise = new Promise(resolve => {
+        identityPopup.addEventListener("popupshown", resolve, { once: true });
+      });
+
+      // Open the popup
+      await win.PanelMultiView.openPopup(
+        identityPopup,
+        gIdentityHandler._identityIconBox,
+        {
+          position: "bottomleft topleft",
+        }
+      ).catch(e => {
+        lazy.logConsole.error("Failed to open identity panel:", e);
+      });
+
+      // Wait for the popupshown event to fire
+      await popupShownPromise;
+
+      // Wait for the next tick to ensure the panel is fully laid out
+      await new Promise(resolve => win.requestAnimationFrame(() => {
+        win.requestAnimationFrame(resolve);
+      }));
+
+      // Now show the QR code subview
+      await gIdentityHandler.showQRCodeSubView();
+    } else {
+      // Panel is already open, show the QR code subview immediately
+      await gIdentityHandler.showQRCodeSubView();
+    }
+  }
+
+  /**
    * Get the sharing data for a given DOM node.
    */
   getDataToShare(node) {
@@ -173,6 +237,23 @@ class SharingUtilsCls {
       menuPopup.appendChild(item);
     }
 
+    // Add QR Code generation menu item (if feature is enabled)
+    if (Services.prefs.getBoolPref("browser.qrcode.enabled", false)) {
+      let qrCodeItem = document.createXULElement("menuitem");
+      qrCodeItem.classList.add("menuitem-iconic", "share-qrcode-item");
+      document.l10n.setAttributes(qrCodeItem, "menu-file-share-qrcode");
+      qrCodeItem.setAttribute("image", "chrome://browser/skin/qrcode.svg");
+      if (!shouldEnable) {
+        qrCodeItem.setAttribute("disabled", "true");
+      }
+      menuPopup.appendChild(qrCodeItem);
+    }
+
+    // Add separator between QR code and native sharing services
+    if (services.length) {
+      menuPopup.appendChild(document.createXULElement("menuseparator"));
+    }
+
     services.forEach(share => {
       let item = document.createXULElement("menuitem");
       item.classList.add("menuitem-iconic");
@@ -198,6 +279,18 @@ class SharingUtilsCls {
   }
 
   onShareURLCommand(event) {
+    // Handle QR code item first, since it might be in a submenu
+    if (event.target.classList.contains("share-qrcode-item")) {
+      // Find the parent share menu item to get the data
+      let shareMenu = event.target.closest("menupopup")?.parentNode;
+      if (!shareMenu || !shareMenu.classList.contains("share-tab-url-item")) {
+        lazy.logConsole.error("Could not find parent share menu");
+        return;
+      }
+      this.#showQRCodeInIdentityPanel(shareMenu.ownerGlobal);
+      return;
+    }
+
     // Only call sharing services for the "Share" menu item. These services
     // are accessed from a submenu popup for MacOS or the "Share" menu item
     // for Windows. Use .closest() as a hack to find either the item itself

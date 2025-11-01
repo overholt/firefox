@@ -1,0 +1,32 @@
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="context-fill" fill-opacity="context-fill-opacity">
+  <!-- QR code icon with three position markers and pattern dots -->
+  <!-- Top-left position marker -->
+  <rect x="1" y="1" width="5" height="5" fill="none" stroke="context-fill" stroke-width="1"/>
+  <rect x="2.5" y="2.5" width="2" height="2"/>
+
+  <!-- Top-right position marker -->
+  <rect x="10" y="1" width="5" height="5" fill="none" stroke="context-fill" stroke-width="1"/>
+  <rect x="11.5" y="2.5" width="2" height="2"/>
+
+  <!-- Bottom-left position marker -->
+  <rect x="1" y="10" width="5" height="5" fill="none" stroke="context-fill" stroke-width="1"/>
+  <rect x="2.5" y="11.5" width="2" height="2"/>
+
+  <!-- Pattern dots representing QR code data -->
+  <rect x="7.5" y="2" width="1.5" height="1.5"/>
+  <rect x="7.5" y="4.5" width="1.5" height="1.5"/>
+  <rect x="2" y="7.5" width="1.5" height="1.5"/>
+  <rect x="4.5" y="7.5" width="1.5" height="1.5"/>
+  <rect x="7.5" y="7.5" width="1.5" height="1.5"/>
+  <rect x="10" y="7.5" width="1.5" height="1.5"/>
+  <rect x="12.5" y="7.5" width="1.5" height="1.5"/>
+  <rect x="7.5" y="10" width="1.5" height="1.5"/>
+  <rect x="10" y="10" width="1.5" height="1.5"/>
+  <rect x="7.5" y="12.5" width="1.5" height="1.5"/>
+  <rect x="10" y="12.5" width="1.5" height="1.5"/>
+  <rect x="12.5" y="12.5" width="1.5" height="1.5"/>
+  <rect x="14" y="10" width="1.5" height="1.5"/>
+</svg>

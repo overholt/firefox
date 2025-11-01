@@ -989,3 +989,54 @@
     background-position-x: left var(--space-large);
   }
 }
+
+/* QR Code Subview */
+.identity-popup-qrcode-state {
+  padding: var(--vertical-section-padding) var(--horizontal-padding);
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.identity-popup-qrcode-spinner {
+  width: var(--size-item-large);
+  height: var(--size-item-large);
+}
+
+.identity-popup-qrcode-image {
+  width: 256px;
+  height: 256px;
+  border: 1px solid var(--panel-separator-color);
+  border-radius: var(--border-radius-small);
+  padding: var(--space-small);
+  background-color: white;
+}
+
+.identity-popup-qrcode-url {
+  word-break: break-all;
+  text-align: center;
+  max-width: 280px;
+  font-size: 0.9em;
+  color: var(--text-color-deemphasized);
+  margin-block: var(--space-medium);
+  min-height: 2.5em;
+}
+
+.identity-popup-qrcode-buttons {
+  display: flex;
+  gap: var(--space-small);
+  justify-content: center;
+  margin-top: var(--space-small);
+}
+
+#identity-popup-qrcode-loading description,
+#identity-popup-qrcode-error description {
+  text-align: center;
+  margin-block: var(--space-medium);
+}
+
+#identity-popup-qrcode-try-again {
+  margin-top: var(--space-small);
+}

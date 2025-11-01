@@ -999,6 +999,20 @@ toolbar-button-logins =
   .label = Passwords
   .tooltiptext = View and manage your saved passwords
 
+## Identity panel QR code subview
+
+identity-share-qrcode =
+    .label = Share QR Code
+
+identity-qrcode-header = QR Code
+identity-qrcode-loading = Generating QR code…
+identity-qrcode-error = Failed to generate QR code.
+identity-qrcode-try-again = Try again
+identity-qrcode-copy = Copy Image
+identity-qrcode-save = Save Image
+identity-qrcode-file-picker-title = Save QR Code
+identity-qrcode-file-picker-filter = PNG Images
+
 # Variables:
 #  $shortcut (String): keyboard shortcut to save a copy of the page
 toolbar-button-save-page =
