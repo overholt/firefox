@@ -23,6 +23,18 @@ ChromeUtils.defineESModuleGetters(lazy, {
   QRCodeWorker: "moz-src:///browser/components/qrcode/QRCodeWorker.sys.mjs",
 });
 
+// Per ISO/IEC 18004, finder patterns are always 7x7 modules.
+const FINDER_SIZE = 7;
+const CELL_SIZE = 20;
+// Per ISO/IEC 18004, the minimum quiet zone around the code is 4 modules.
+const MARGIN_CELLS = 4;
+// Dot radius as a fraction of cell size. 0.4 means dots are 80% of cell width,
+// leaving a visible gap between adjacent dots.
+const DOT_RADIUS_FACTOR = 0.4;
+// Corner radius factors for finder pattern rounded rectangles (design choices).
+const FINDER_OUTER_CORNER_RADIUS_FACTOR = 1.2;
+const FINDER_INNER_CORNER_RADIUS_FACTOR = 0.6;
+
 export const QRCodeGenerator = {
   /**
    * Generate a QR code for the given URL with Firefox logo overlay
@@ -37,39 +49,49 @@ export const QRCodeGenerator = {
     const worker = new lazy.QRCodeWorker();
 
     try {
-      // Generate the base QR code with high error correction to allow for logo overlay
+      // Generate the QR code matrix with high error correction to allow for logo overlay
       // Use worker thread to avoid blocking main thread
-      const qrData = await worker.generateQRCode(url, "H");
+      const { matrix, moduleCount } = await worker.generateQRMatrix(url, "H");
 
-      const scale = 10;
+      if (
+        !Array.isArray(matrix) ||
+        matrix.length !== moduleCount ||
+        matrix.some(row => row.length !== moduleCount)
+      ) {
+        throw new Error("QR worker returned malformed matrix data");
+      }
+
+      const margin = MARGIN_CELLS * CELL_SIZE;
+      // margin * 2 because the quiet zone applies on both sides.
+      const canvasSize = moduleCount * CELL_SIZE + margin * 2;
+
       const canvas = document.createElementNS(
         "http://www.w3.org/1999/xhtml",
         "canvas"
       );
-      canvas.width = qrData.width * scale;
-      canvas.height = qrData.height * scale;
+      canvas.width = canvasSize;
+      canvas.height = canvasSize;
       const ctx = canvas.getContext("2d");
 
-      // Disable image smoothing for crisp QR code rendering
-      ctx.imageSmoothingEnabled = false;
-
-      // Load and draw the base QR code at high resolution
-      const qrImage = await this._loadImage(document, qrData.src);
-      ctx.drawImage(qrImage, 0, 0, qrData.width * scale, qrData.height * scale);
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvasSize, canvasSize);
 
       // Calculate logo size and position (center of QR code)
-      // Use 18% of QR code size (reduced from 25%) to stay within error correction limits
-      const logoSize = Math.floor(qrData.width * 0.18) * scale;
-      const centerX = Math.floor((qrData.width * scale) / 2);
-      const centerY = Math.floor((qrData.height * scale) / 2);
+      // Use 18% of QR code size to stay within error correction limits.
+      const logoSize = Math.round(canvasSize * 0.18);
+      const centerX = Math.floor(canvasSize / 2);
+      const centerY = Math.floor(canvasSize / 2);
+      const logoClearRadius = logoSize / 2 + CELL_SIZE;
 
-      // Draw circular white background for logo with minimal padding
-      const padding = 4 * scale;
-      const radius = (logoSize + padding * 2) / 2;
-      ctx.fillStyle = "white";
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-      ctx.fill();
+      this._drawQRDots(
+        ctx,
+        matrix,
+        moduleCount,
+        margin,
+        centerX,
+        centerY,
+        logoClearRadius
+      );
 
       // Load and draw the Firefox logo at high resolution
       try {
@@ -79,9 +101,13 @@ export const QRCodeGenerator = {
         ctx.imageSmoothingQuality = "high";
 
         // Draw logo centered
-        const logoX = centerX - logoSize / 2;
-        const logoY = centerY - logoSize / 2;
-        ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+        ctx.drawImage(
+          logoImage,
+          centerX - logoSize / 2,
+          centerY - logoSize / 2,
+          logoSize,
+          logoSize
+        );
       } catch (e) {
         lazy.logConsole.warn("Could not load Firefox logo for QR code:", e);
       }
@@ -97,6 +123,78 @@ export const QRCodeGenerator = {
         lazy.logConsole.warn("Failed to terminate QRCode worker:", e);
       }
     }
+  },
+
+  _drawQRDots(ctx, matrix, moduleCount, margin, centerX, centerY, clearRadius) {
+    const isInFinderPatternCorners = (row, col) =>
+      (row < FINDER_SIZE && col < FINDER_SIZE) ||
+      (row < FINDER_SIZE && col >= moduleCount - FINDER_SIZE) ||
+      (row >= moduleCount - FINDER_SIZE && col < FINDER_SIZE);
+
+    ctx.fillStyle = "black";
+    for (let row = 0; row < moduleCount; row++) {
+      for (let col = 0; col < moduleCount; col++) {
+        // Skip the three finder pattern corners because they are redrawn below.
+        if (isInFinderPatternCorners(row, col) || !matrix[row][col]) {
+          continue;
+        }
+        const dotX = margin + (col + 0.5) * CELL_SIZE;
+        const dotY = margin + (row + 0.5) * CELL_SIZE;
+        const offsetX = dotX - centerX;
+        const offsetY = dotY - centerY;
+        // Leave a circular clear zone so the Firefox logo never overlaps a dot.
+        if (
+          Math.hypot(offsetX, offsetY) <
+          clearRadius + CELL_SIZE * DOT_RADIUS_FACTOR
+        ) {
+          continue;
+        }
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, CELL_SIZE * DOT_RADIUS_FACTOR, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+
+    for (const [startRow, startCol] of [
+      [0, 0],
+      [0, moduleCount - FINDER_SIZE],
+      [moduleCount - FINDER_SIZE, 0],
+    ]) {
+      this._drawFinderPattern(
+        ctx,
+        margin + startCol * CELL_SIZE,
+        margin + startRow * CELL_SIZE
+      );
+    }
+  },
+
+  _drawFinderPattern(ctx, x, y) {
+    const outerSize = FINDER_SIZE * CELL_SIZE;
+    const ringSize = (FINDER_SIZE - 2) * CELL_SIZE;
+    const centerSize = (FINDER_SIZE - 4) * CELL_SIZE;
+    const outerR = CELL_SIZE * FINDER_OUTER_CORNER_RADIUS_FACTOR;
+    const innerR = CELL_SIZE * FINDER_INNER_CORNER_RADIUS_FACTOR;
+
+    ctx.fillStyle = "black";
+    ctx.beginPath();
+    ctx.roundRect(x, y, outerSize, outerSize, outerR);
+    ctx.fill();
+
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.roundRect(x + CELL_SIZE, y + CELL_SIZE, ringSize, ringSize, innerR);
+    ctx.fill();
+
+    ctx.fillStyle = "black";
+    ctx.beginPath();
+    ctx.roundRect(
+      x + 2 * CELL_SIZE,
+      y + 2 * CELL_SIZE,
+      centerSize,
+      centerSize,
+      innerR
+    );
+    ctx.fill();
   },
 
   /**

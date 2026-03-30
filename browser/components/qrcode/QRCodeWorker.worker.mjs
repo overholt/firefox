@@ -49,7 +49,6 @@ class QRCodeWorkerImpl {
     if (!QR || !QR.encodeToDataURI) {
       throw new Error("QRCode library not available in worker");
     }
-
     // Generate the QR code data URI
     const qrData = QR.encodeToDataURI(url, errorCorrectionLevel);
 
@@ -58,6 +57,22 @@ class QRCodeWorkerImpl {
       height: qrData.height,
       src: qrData.src,
     };
+  }
+
+  /**
+   * @param {string} url
+   * @param {string} errorCorrectionLevel
+   * @returns {{ matrix: boolean[][], moduleCount: number }}
+   */
+  generateQRMatrix(url, errorCorrectionLevel = "H") {
+    if (!QR || !QR.encodeToMatrix) {
+      throw new Error("QRCode library not available in worker");
+    }
+    const { matrix, moduleCount } = QR.encodeToMatrix(
+      url,
+      errorCorrectionLevel
+    );
+    return { matrix, moduleCount };
   }
 
   /**

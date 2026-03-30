@@ -65,6 +65,17 @@ export class QRCodeWorker extends BasePromiseWorker {
   }
 
   /**
+   * Generate the module matrix for the given URL without rasterizing an image.
+   *
+   * @param {string} url - The URL to encode in the QR code
+   * @param {string} errorCorrectionLevel - Error correction level (L, M, Q, H)
+   * @returns {Promise<{matrix: boolean[][], moduleCount: number}>}
+   */
+  async generateQRMatrix(url, errorCorrectionLevel = "H") {
+    return this.post("generateQRMatrix", [url, errorCorrectionLevel]);
+  }
+
+  /**
    * Terminate the worker and clean up resources
    */
   async terminate() {
