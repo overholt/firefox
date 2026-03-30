@@ -66,6 +66,67 @@ add_task(async function test_worker_can_generate_simple_qrcode() {
   await worker.terminate();
 });
 
+add_task(async function test_worker_generateQRCode_has_no_matrix() {
+  info("Testing QRCodeWorker generateQRCode does not include matrix data");
+
+  const worker = new QRCodeWorker();
+  const result = await worker.generateQRCode("https://mozilla.org");
+
+  Assert.equal(
+    result.matrix,
+    undefined,
+    "generateQRCode should not return matrix"
+  );
+  Assert.equal(
+    result.moduleCount,
+    undefined,
+    "generateQRCode should not return moduleCount"
+  );
+
+  await worker.terminate();
+});
+
+add_task(async function test_worker_generateQRMatrix() {
+  info("Testing QRCodeWorker generateQRMatrix returns matrix data");
+
+  const worker = new QRCodeWorker();
+  const result = await worker.generateQRMatrix("https://mozilla.org");
+
+  Assert.ok(Array.isArray(result.matrix), "Result should have a matrix array");
+  Assert.equal(result.src, undefined, "Result should not include image data");
+  Assert.equal(
+    result.width,
+    undefined,
+    "Result should not include image width"
+  );
+  Assert.equal(
+    result.height,
+    undefined,
+    "Result should not include image height"
+  );
+  Assert.greater(
+    result.moduleCount,
+    0,
+    "Result should have a positive moduleCount"
+  );
+  Assert.equal(
+    result.matrix.length,
+    result.moduleCount,
+    "matrix should have moduleCount rows"
+  );
+  Assert.equal(
+    result.matrix[0].length,
+    result.moduleCount,
+    "matrix rows should have moduleCount columns"
+  );
+  Assert.ok(
+    result.matrix[0][0],
+    "top-left finder pattern corner should be dark"
+  );
+
+  await worker.terminate();
+});
+
 add_task(async function test_worker_can_generate_qrcode_for_long_url() {
   info("Testing QRCodeWorker can generate a QR code for a longer URL");
 
