@@ -49,14 +49,11 @@ class QRCodeWorkerImpl {
     if (!QR || !QR.encodeToDataURI) {
       throw new Error("QRCode library not available in worker");
     }
-    // Generate the QR code data URI
-    const qrData = QR.encodeToDataURI(url, errorCorrectionLevel);
-
-    return {
-      width: qrData.width,
-      height: qrData.height,
-      src: qrData.src,
-    };
+    const { src, width, height } = QR.encodeToDataURI(
+      url,
+      errorCorrectionLevel
+    );
+    return { src, width, height };
   }
 
   /**

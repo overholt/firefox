@@ -58,7 +58,7 @@ export class QRCodeWorker extends BasePromiseWorker {
    *
    * @param {string} url - The URL to encode in the QR code
    * @param {string} errorCorrectionLevel - Error correction level (L, M, Q, H)
-   * @returns {Promise<object>} Object with width, height, and src data URI
+   * @returns {Promise<{src: string, width: number, height: number}>}
    */
   async generateQRCode(url, errorCorrectionLevel = "H") {
     return this.post("generateQRCode", [url, errorCorrectionLevel]);
