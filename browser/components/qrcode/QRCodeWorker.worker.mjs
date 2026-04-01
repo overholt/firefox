@@ -59,17 +59,14 @@ class QRCodeWorkerImpl {
   /**
    * @param {string} url
    * @param {string} errorCorrectionLevel
-   * @returns {{ matrix: boolean[][], moduleCount: number }}
+   * @returns {{ matrix: boolean[][], dotCount: number }}
    */
   generateQRMatrix(url, errorCorrectionLevel = "H") {
     if (!QR || !QR.encodeToMatrix) {
       throw new Error("QRCode library not available in worker");
     }
-    const { matrix, moduleCount } = QR.encodeToMatrix(
-      url,
-      errorCorrectionLevel
-    );
-    return { matrix, moduleCount };
+    const { matrix, dotCount } = QR.encodeToMatrix(url, errorCorrectionLevel);
+    return { matrix, dotCount };
   }
 
   /**

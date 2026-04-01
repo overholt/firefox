@@ -30,7 +30,7 @@ function run_test() {
 
   const justMatrix = QR.encodeToMatrix("HELLO", "L");
   Assert.equal(
-    justMatrix.moduleCount,
+    justMatrix.dotCount,
     21,
     "HELLO at L correction is version 1 (21 modules)"
   );
@@ -39,12 +39,12 @@ function run_test() {
   Assert.equal(justMatrix.height, undefined, "matrix encoding omits height");
   Assert.equal(
     justMatrix.matrix.length,
-    justMatrix.moduleCount,
+    justMatrix.dotCount,
     "matrix has correct number of rows"
   );
   Assert.equal(
     justMatrix.matrix[0].length,
-    justMatrix.moduleCount,
+    justMatrix.dotCount,
     "matrix rows have correct number of columns"
   );
   Assert.strictEqual(

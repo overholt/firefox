@@ -78,9 +78,9 @@ add_task(async function test_worker_generateQRCode_has_no_matrix() {
     "generateQRCode should not return matrix"
   );
   Assert.equal(
-    result.moduleCount,
+    result.dotCount,
     undefined,
-    "generateQRCode should not return moduleCount"
+    "generateQRCode should not return dotCount"
   );
 
   await worker.terminate();
@@ -105,19 +105,19 @@ add_task(async function test_worker_generateQRMatrix() {
     "Result should not include image height"
   );
   Assert.greater(
-    result.moduleCount,
+    result.dotCount,
     0,
-    "Result should have a positive moduleCount"
+    "Result should have a positive dotCount"
   );
   Assert.equal(
     result.matrix.length,
-    result.moduleCount,
-    "matrix should have moduleCount rows"
+    result.dotCount,
+    "matrix should have dotCount rows"
   );
   Assert.equal(
     result.matrix[0].length,
-    result.moduleCount,
-    "matrix rows should have moduleCount columns"
+    result.dotCount,
+    "matrix rows should have dotCount columns"
   );
   Assert.ok(
     result.matrix[0][0],

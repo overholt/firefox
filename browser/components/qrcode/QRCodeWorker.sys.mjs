@@ -69,7 +69,7 @@ export class QRCodeWorker extends BasePromiseWorker {
    *
    * @param {string} url - The URL to encode in the QR code
    * @param {string} errorCorrectionLevel - Error correction level (L, M, Q, H)
-   * @returns {Promise<{matrix: boolean[][], moduleCount: number}>}
+   * @returns {Promise<{matrix: boolean[][], dotCount: number}>}
    */
   async generateQRMatrix(url, errorCorrectionLevel = "H") {
     return this.post("generateQRMatrix", [url, errorCorrectionLevel]);

@@ -88,3 +88,16 @@ add_task(async function test_generator_multiple_generations() {
 
   // Each call creates and cleans up its own worker
 });
+
+add_task(function test_generator_places_logo_on_small_qr() {
+  info("Testing QRCodeGenerator can place a logo on a version 1 QR code");
+
+  const placement = QRCodeGenerator.getLogoPlacement(21, 4 * 20);
+
+  Assert.ok(placement.showLogo, "Version 1 QR codes should still show a logo");
+  Assert.greaterOrEqual(
+    placement.logoSize,
+    6 * 20,
+    "Small QR codes should use at least the minimum viable logo size"
+  );
+});

@@ -13,7 +13,10 @@ const { QRCodeWorker } = ChromeUtils.importESModule(
 const CELL_SIZE = 20;
 const MARGIN = 4 * CELL_SIZE;
 const DOT_RADIUS_FACTOR = 0.4;
+const MIN_LOGO_MODULE_SPAN = 6;
 const TEST_URL = "https://mozilla.org";
+const LONG_TEST_URL =
+  "https://www.cnet.com/home/kitchen-and-household/keep-these-7-devices-far-away-from-extension-cords-or-power-strips/?utm_source=firefox-newtab-en-us";
 
 async function renderToSamplingCanvas(url) {
   const dataURI = await QRCodeGenerator.generateQRCode(url, document);
@@ -44,6 +47,8 @@ async function renderToSamplingCanvas(url) {
 
 const isNearBlack = ({ r, g, b }) => r < 30 && g < 30 && b < 30;
 const isNearWhite = ({ r, g, b }) => r > 200 && g > 200 && b > 200;
+const getLogoPlacement = dotCount =>
+  QRCodeGenerator.getLogoPlacement(dotCount, MARGIN);
 
 add_task(async function test_qrcode_png_dimensions_and_background() {
   const { width, height, getPixel } = await renderToSamplingCanvas(TEST_URL);
@@ -101,31 +106,35 @@ add_task(async function test_qrcode_png_logo_clear_zone() {
   // clear zone for this URL. This ensures the test is meaningful: we only assert on
   // positions that would have rendered as dots if the clear zone weren't applied.
   const worker = new QRCodeWorker();
-  let matrix, moduleCount;
+  let matrix, dotCount;
   try {
-    ({ matrix, moduleCount } = await worker.generateQRMatrix(TEST_URL, "H"));
+    ({ matrix, dotCount } = await worker.generateQRMatrix(TEST_URL, "H"));
   } finally {
     await worker.terminate();
   }
 
-  const canvasSize = moduleCount * CELL_SIZE + MARGIN * 2;
-  const centerX = canvasSize / 2;
-  const centerY = canvasSize / 2;
-  const clearRadius = Math.round(canvasSize * 0.18) / 2 + CELL_SIZE;
+  const placement = getLogoPlacement(dotCount);
+  Assert.ok(placement.showLogo, "Baseline QR code should still render a logo");
+  Assert.greaterOrEqual(
+    placement.logoSize,
+    MIN_LOGO_MODULE_SPAN * CELL_SIZE,
+    "Rendered logo should not shrink below the minimum viable size"
+  );
 
   const suppressedModules = [];
-  for (let row = 0; row < moduleCount; row++) {
-    for (let col = 0; col < moduleCount; col++) {
-      if (!matrix[row][col]) {
+  for (let row = 0; row < dotCount; row++) {
+    for (let col = 0; col < dotCount; col++) {
+      if (!matrix[row][col] || placement.reservedMatrix[row][col]) {
         continue;
       }
       const dotX = MARGIN + (col + 0.5) * CELL_SIZE;
       const dotY = MARGIN + (row + 0.5) * CELL_SIZE;
-      const offsetX = dotX - centerX;
-      const offsetY = dotY - centerY;
+      const offsetX = dotX - placement.centerX;
+      const offsetY = dotY - placement.centerY;
       if (
+        placement.showLogo &&
         Math.hypot(offsetX, offsetY) <
-        clearRadius + CELL_SIZE * DOT_RADIUS_FACTOR
+          placement.clearRadius + CELL_SIZE * DOT_RADIUS_FACTOR
       ) {
         suppressedModules.push({ dotX, dotY });
       }
@@ -135,95 +144,150 @@ add_task(async function test_qrcode_png_logo_clear_zone() {
   Assert.greater(
     suppressedModules.length,
     0,
-    "Test URL should have dark QR modules in the clear zone (ensures test is meaningful)"
+    "Test URL should have dark QR dots in the clear zone (ensures test is meaningful)"
   );
 
   const { getPixel } = await renderToSamplingCanvas(TEST_URL);
   for (const { dotX, dotY } of suppressedModules) {
     Assert.ok(
       !isNearBlack(getPixel(dotX, dotY)),
-      `Suppressed module at (${Math.round(dotX)}, ${Math.round(dotY)}) should not render as a dark dot`
+      `Suppressed dot at (${Math.round(dotX)}, ${Math.round(dotY)}) should not render as a dark dot`
     );
   }
 });
 
-// Validates that the rendered PNG faithfully represents the QR matrix outside
-// the clear zone, and that the suppressed module count stays within H-level
-// error correction capacity (30%). This is the closest approximation to an
-// end-to-end decode test achievable without a QR decoder in the test
-// environment. Tests two URL lengths: short (baseline) and long (stress).
-add_task(async function test_qrcode_png_decodability() {
-  const FINDER_SIZE = 7;
-  const isInFinderZone = (row, col, n) =>
-    (row < FINDER_SIZE && col < FINDER_SIZE) ||
-    (row < FINDER_SIZE && col >= n - FINDER_SIZE) ||
-    (row >= n - FINDER_SIZE && col < FINDER_SIZE);
+add_task(async function test_qrcode_png_long_url_center_alignment_pattern() {
+  const worker = new QRCodeWorker();
+  let matrix, dotCount;
+  try {
+    ({ matrix, dotCount } = await worker.generateQRMatrix(LONG_TEST_URL, "H"));
+  } finally {
+    await worker.terminate();
+  }
 
-  const urls = [
-    TEST_URL,
-    "https://www.cnet.com/home/kitchen-and-household/keep-these-7-devices-far-away-from-extension-cords-or-power-strips/?utm_source=firefox-newtab-en-us",
-  ];
+  const placement = getLogoPlacement(dotCount);
+  Assert.ok(placement.showLogo, "Long test URL should still render a logo");
+  Assert.greaterOrEqual(
+    placement.logoSize,
+    MIN_LOGO_MODULE_SPAN * CELL_SIZE,
+    "Long-URL logo should stay at or above the minimum viable size"
+  );
+
+  // Find the alignment pattern center nearest the QR code midpoint by looking for
+  // a dark reserved cell (outside finder zones) surrounded by a full 5x5 reserved block.
+  const isInFinderZone = (r, c) =>
+    (r < 8 && c < 8) ||
+    (r < 8 && c >= dotCount - 8) ||
+    (r >= dotCount - 8 && c < 8);
+  const mid = (dotCount - 1) / 2;
+  let centerRow = -1,
+    centerCol = -1,
+    bestDist = Infinity;
+  for (let row = 2; row < dotCount - 2; row++) {
+    for (let col = 2; col < dotCount - 2; col++) {
+      if (
+        isInFinderZone(row, col) ||
+        !matrix[row][col] ||
+        !placement.reservedMatrix[row][col]
+      ) {
+        continue;
+      }
+      let isAlignmentCenter = true;
+      for (let dr = -2; dr <= 2 && isAlignmentCenter; dr++) {
+        for (let dc = -2; dc <= 2 && isAlignmentCenter; dc++) {
+          if (!placement.reservedMatrix[row + dr]?.[col + dc]) {
+            isAlignmentCenter = false;
+          }
+        }
+      }
+      if (!isAlignmentCenter) {
+        continue;
+      }
+      const dist = (row - mid) ** 2 + (col - mid) ** 2;
+      if (dist < bestDist) {
+        bestDist = dist;
+        centerRow = row;
+        centerCol = col;
+      }
+    }
+  }
+
+  Assert.notEqual(
+    centerRow,
+    -1,
+    "Long URL should produce a QR code with a center alignment pattern"
+  );
+
+  const { getPixel } = await renderToSamplingCanvas(LONG_TEST_URL);
+  for (let row = centerRow - 2; row <= centerRow + 2; row++) {
+    for (let col = centerCol - 2; col <= centerCol + 2; col++) {
+      Assert.equal(
+        isNearBlack(
+          getPixel(
+            MARGIN + (col + 0.5) * CELL_SIZE,
+            MARGIN + (row + 0.5) * CELL_SIZE
+          )
+        ),
+        matrix[row][col],
+        `Center alignment pattern at (${row},${col}) should be preserved`
+      );
+    }
+  }
+});
+
+// Validates that the rendered PNG faithfully represents reserved QR dots and
+// keeps any data-dot suppression within H-level error correction capacity
+// (30%). Tests two URL lengths: short (baseline) and long (stress).
+add_task(async function test_qrcode_png_decodability() {
+  const urls = [TEST_URL, LONG_TEST_URL];
 
   for (const url of urls) {
     const worker = new QRCodeWorker();
-    let matrix, moduleCount;
+    let matrix, dotCount;
     try {
-      ({ matrix, moduleCount } = await worker.generateQRMatrix(url, "H"));
+      ({ matrix, dotCount } = await worker.generateQRMatrix(url, "H"));
     } finally {
       await worker.terminate();
     }
 
-    const canvasSize = moduleCount * CELL_SIZE + MARGIN * 2;
-    const centerX = canvasSize / 2;
-    const centerY = canvasSize / 2;
-    const clearRadius = Math.round(canvasSize * 0.18) / 2 + CELL_SIZE;
-
+    const placement = getLogoPlacement(dotCount);
     const { getPixel } = await renderToSamplingCanvas(url);
 
-    let totalModules = 0;
-    let suppressedModules = 0;
+    let totalDataDots = 0;
+    let dataMismatches = 0;
+    let reservedMismatches = 0;
 
-    for (let row = 0; row < moduleCount; row++) {
-      for (let col = 0; col < moduleCount; col++) {
-        if (isInFinderZone(row, col, moduleCount)) {
-          continue;
-        }
-        totalModules++;
+    for (let row = 0; row < dotCount; row++) {
+      for (let col = 0; col < dotCount; col++) {
         const dotX = MARGIN + (col + 0.5) * CELL_SIZE;
         const dotY = MARGIN + (row + 0.5) * CELL_SIZE;
-        const offsetX = dotX - centerX;
-        const offsetY = dotY - centerY;
-        if (
-          Math.hypot(offsetX, offsetY) <
-          clearRadius + CELL_SIZE * DOT_RADIUS_FACTOR
-        ) {
-          if (matrix[row][col]) {
-            suppressedModules++;
+        const renderedDark = isNearBlack(getPixel(dotX, dotY));
+
+        if (placement.reservedMatrix[row][col]) {
+          if (renderedDark !== matrix[row][col]) {
+            reservedMismatches++;
           }
           continue;
         }
-        // Outside the clear zone: pixel must faithfully match the matrix.
-        const pixel = getPixel(dotX, dotY);
-        if (matrix[row][col]) {
-          Assert.ok(
-            isNearBlack(pixel),
-            `url="${url}" dark module at (${row},${col}) should render as a dot`
-          );
-        } else {
-          Assert.ok(
-            isNearWhite(pixel),
-            `url="${url}" light module at (${row},${col}) should render as background`
-          );
+
+        totalDataDots++;
+        if (renderedDark !== matrix[row][col]) {
+          dataMismatches++;
         }
       }
     }
 
-    // Suppressed modules must stay well within H-level error correction (30%).
-    const suppressedFraction = suppressedModules / totalModules;
+    Assert.equal(
+      reservedMismatches,
+      0,
+      `url="${url}" should preserve all reserved QR dots`
+    );
+
+    const suppressedFraction = dataMismatches / totalDataDots;
     Assert.less(
       suppressedFraction,
       0.3,
-      `url="${url}" suppressed ${(suppressedFraction * 100).toFixed(1)}% of modules; must be under 30% for H-level error correction`
+      `url="${url}" changed ${(suppressedFraction * 100).toFixed(1)}% of data dots; must be under 30% for H-level error correction`
     );
   }
 });

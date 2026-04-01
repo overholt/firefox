@@ -34,6 +34,53 @@ const DOT_RADIUS_FACTOR = 0.4;
 // Corner radius factors for finder pattern rounded rectangles (design choices).
 const FINDER_OUTER_CORNER_RADIUS_FACTOR = 1.2;
 const FINDER_INNER_CORNER_RADIUS_FACTOR = 0.6;
+// Minimum logo size in QR modules — below this the logo is too small to recognise.
+const MIN_LOGO_MODULE_SPAN = 6;
+// Maximum logo size in QR modules — keeps the logo within the H-level error correction budget.
+const MAX_LOGO_MODULE_SPAN = 8;
+// Alignment pattern center coordinates by QR version (1-indexed), from ISO/IEC 18004 Table E.1.
+const PATTERN_POSITION_TABLE = [
+  [],
+  [6, 18],
+  [6, 22],
+  [6, 26],
+  [6, 30],
+  [6, 34],
+  [6, 22, 38],
+  [6, 24, 42],
+  [6, 26, 46],
+  [6, 28, 50],
+  [6, 30, 54],
+  [6, 32, 58],
+  [6, 34, 62],
+  [6, 26, 46, 66],
+  [6, 26, 48, 70],
+  [6, 26, 50, 74],
+  [6, 30, 54, 78],
+  [6, 30, 56, 82],
+  [6, 30, 58, 86],
+  [6, 34, 62, 90],
+  [6, 28, 50, 72, 94],
+  [6, 26, 50, 74, 98],
+  [6, 30, 54, 78, 102],
+  [6, 28, 54, 80, 106],
+  [6, 32, 58, 84, 110],
+  [6, 30, 58, 86, 114],
+  [6, 34, 62, 90, 118],
+  [6, 26, 50, 74, 98, 122],
+  [6, 30, 54, 78, 102, 126],
+  [6, 26, 52, 78, 104, 130],
+  [6, 30, 56, 82, 108, 134],
+  [6, 34, 60, 86, 112, 138],
+  [6, 30, 58, 86, 114, 142],
+  [6, 34, 62, 90, 118, 146],
+  [6, 30, 54, 78, 102, 126, 150],
+  [6, 24, 50, 76, 102, 128, 154],
+  [6, 28, 54, 80, 106, 132, 158],
+  [6, 32, 58, 84, 110, 136, 162],
+  [6, 26, 54, 82, 110, 138, 166],
+  [6, 30, 58, 86, 114, 142, 170],
+];
 
 export const QRCodeGenerator = {
   /**
@@ -51,19 +98,19 @@ export const QRCodeGenerator = {
     try {
       // Generate the QR code matrix with high error correction to allow for logo overlay
       // Use worker thread to avoid blocking main thread
-      const { matrix, moduleCount } = await worker.generateQRMatrix(url, "H");
+      const { matrix, dotCount } = await worker.generateQRMatrix(url, "H");
 
       if (
         !Array.isArray(matrix) ||
-        matrix.length !== moduleCount ||
-        matrix.some(row => row.length !== moduleCount)
+        matrix.length !== dotCount ||
+        matrix.some(row => row.length !== dotCount)
       ) {
         throw new Error("QR worker returned malformed matrix data");
       }
 
       const margin = MARGIN_CELLS * CELL_SIZE;
       // margin * 2 because the quiet zone applies on both sides.
-      const canvasSize = moduleCount * CELL_SIZE + margin * 2;
+      const canvasSize = dotCount * CELL_SIZE + margin * 2;
 
       const canvas = document.createElementNS(
         "http://www.w3.org/1999/xhtml",
@@ -76,40 +123,36 @@ export const QRCodeGenerator = {
       ctx.fillStyle = "white";
       ctx.fillRect(0, 0, canvasSize, canvasSize);
 
-      // Calculate logo size and position (center of QR code)
-      // Use 18% of QR code size to stay within error correction limits.
-      const logoSize = Math.round(canvasSize * 0.18);
-      const centerX = Math.floor(canvasSize / 2);
-      const centerY = Math.floor(canvasSize / 2);
-      const logoClearRadius = logoSize / 2 + CELL_SIZE;
+      const placement = this.getLogoPlacement(dotCount, margin);
 
       this._drawQRDots(
         ctx,
         matrix,
-        moduleCount,
+        placement.reservedMatrix,
+        dotCount,
         margin,
-        centerX,
-        centerY,
-        logoClearRadius
+        placement.centerX,
+        placement.centerY,
+        placement.clearRadius,
+        placement.showLogo
       );
 
       // Load and draw the Firefox logo at high resolution
-      try {
-        const logoImage = await this._loadFirefoxLogo(document);
-        // Re-enable smoothing for the logo to avoid pixelation
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
-
-        // Draw logo centered
-        ctx.drawImage(
-          logoImage,
-          centerX - logoSize / 2,
-          centerY - logoSize / 2,
-          logoSize,
-          logoSize
-        );
-      } catch (e) {
-        lazy.logConsole.warn("Could not load Firefox logo for QR code:", e);
+      if (placement.showLogo) {
+        try {
+          const logoImage = await this._loadFirefoxLogo(document);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(
+            logoImage,
+            placement.centerX - placement.logoSize / 2,
+            placement.centerY - placement.logoSize / 2,
+            placement.logoSize,
+            placement.logoSize
+          );
+        } catch (e) {
+          lazy.logConsole.warn("Could not load Firefox logo for QR code:", e);
+        }
       }
 
       // Convert canvas to data URI
@@ -125,15 +168,25 @@ export const QRCodeGenerator = {
     }
   },
 
-  _drawQRDots(ctx, matrix, moduleCount, margin, centerX, centerY, clearRadius) {
+  _drawQRDots(
+    ctx,
+    matrix,
+    reservedMatrix,
+    dotCount,
+    margin,
+    centerX,
+    centerY,
+    clearRadius,
+    showLogo
+  ) {
     const isInFinderPatternCorners = (row, col) =>
       (row < FINDER_SIZE && col < FINDER_SIZE) ||
-      (row < FINDER_SIZE && col >= moduleCount - FINDER_SIZE) ||
-      (row >= moduleCount - FINDER_SIZE && col < FINDER_SIZE);
+      (row < FINDER_SIZE && col >= dotCount - FINDER_SIZE) ||
+      (row >= dotCount - FINDER_SIZE && col < FINDER_SIZE);
 
     ctx.fillStyle = "black";
-    for (let row = 0; row < moduleCount; row++) {
-      for (let col = 0; col < moduleCount; col++) {
+    for (let row = 0; row < dotCount; row++) {
+      for (let col = 0; col < dotCount; col++) {
         // Skip the three finder pattern corners because they are redrawn below.
         if (isInFinderPatternCorners(row, col) || !matrix[row][col]) {
           continue;
@@ -142,10 +195,11 @@ export const QRCodeGenerator = {
         const dotY = margin + (row + 0.5) * CELL_SIZE;
         const offsetX = dotX - centerX;
         const offsetY = dotY - centerY;
-        // Leave a circular clear zone so the Firefox logo never overlaps a dot.
         if (
+          showLogo &&
+          !reservedMatrix[row][col] &&
           Math.hypot(offsetX, offsetY) <
-          clearRadius + CELL_SIZE * DOT_RADIUS_FACTOR
+            clearRadius + CELL_SIZE * DOT_RADIUS_FACTOR
         ) {
           continue;
         }
@@ -157,8 +211,8 @@ export const QRCodeGenerator = {
 
     for (const [startRow, startCol] of [
       [0, 0],
-      [0, moduleCount - FINDER_SIZE],
-      [moduleCount - FINDER_SIZE, 0],
+      [0, dotCount - FINDER_SIZE],
+      [dotCount - FINDER_SIZE, 0],
     ]) {
       this._drawFinderPattern(
         ctx,
@@ -195,6 +249,204 @@ export const QRCodeGenerator = {
       innerR
     );
     ctx.fill();
+  },
+
+  /**
+   * Compute logo placement for a QR code of the given size.
+   *
+   * @param {number} dotCount - Number of modules per side of the QR code.
+   * @param {number} margin - Pixel margin (quiet zone) around the module grid.
+   * @returns {{ centerX: number, centerY: number, clearRadius: number,
+   *             logoSize: number, reservedMatrix: boolean[][], showLogo: boolean }}
+   *   centerX/centerY: pixel center of the logo on the canvas.
+   *   clearRadius: radius of the dot-suppression zone around the logo center.
+   *   logoSize: pixel size of the logo square.
+   *   reservedMatrix: which modules must not be suppressed (finder, timing, alignment, format info).
+   *   showLogo: false if no valid placement exists.
+   */
+  getLogoPlacement(dotCount, margin) {
+    const canvasSize = dotCount * CELL_SIZE + margin * 2;
+    const reservedMatrix = this._createReservedMatrix(dotCount);
+    const preferredLogoSize = this._getPreferredLogoSize(canvasSize);
+    const minimumLogoSize = MIN_LOGO_MODULE_SPAN * CELL_SIZE;
+    let logoSize = Math.max(preferredLogoSize, minimumLogoSize);
+    let centerCell = null;
+
+    while (logoSize >= minimumLogoSize && !centerCell) {
+      centerCell = this._findLogoCenterCell(dotCount, logoSize, reservedMatrix);
+      if (!centerCell) {
+        logoSize -= CELL_SIZE;
+      }
+    }
+
+    if (!centerCell) {
+      return {
+        centerX: Math.floor(canvasSize / 2),
+        centerY: Math.floor(canvasSize / 2),
+        clearRadius: 0,
+        logoSize: minimumLogoSize,
+        reservedMatrix,
+        showLogo: false,
+      };
+    }
+
+    return {
+      centerX: margin + (centerCell.col + 0.5) * CELL_SIZE,
+      centerY: margin + (centerCell.row + 0.5) * CELL_SIZE,
+      clearRadius: logoSize / 2,
+      logoSize,
+      reservedMatrix,
+      showLogo: true,
+    };
+  },
+
+  _getPreferredLogoSize(canvasSize) {
+    const desiredLogoSize = Math.round(canvasSize * 0.18);
+    return Math.min(desiredLogoSize, MAX_LOGO_MODULE_SPAN * CELL_SIZE);
+  },
+
+  _createReservedMatrix(dotCount) {
+    const version = (dotCount - 17) / 4;
+    const reservedMatrix = Array.from({ length: dotCount }, () =>
+      Array(dotCount).fill(false)
+    );
+    const mark = (row, col) => {
+      if (row >= 0 && row < dotCount && col >= 0 && col < dotCount) {
+        reservedMatrix[row][col] = true;
+      }
+    };
+
+    for (const [startRow, startCol] of [
+      [0, 0],
+      [0, dotCount - 7],
+      [dotCount - 7, 0],
+    ]) {
+      for (let rowOffset = -1; rowOffset <= 7; rowOffset++) {
+        for (let colOffset = -1; colOffset <= 7; colOffset++) {
+          mark(startRow + rowOffset, startCol + colOffset);
+        }
+      }
+    }
+
+    for (let index = 8; index < dotCount - 8; index++) {
+      mark(index, 6);
+      mark(6, index);
+    }
+
+    const alignmentPositions = PATTERN_POSITION_TABLE[version - 1] ?? [];
+    for (const row of alignmentPositions) {
+      for (const col of alignmentPositions) {
+        if (reservedMatrix[row][col]) {
+          continue;
+        }
+        for (let rowOffset = -2; rowOffset <= 2; rowOffset++) {
+          for (let colOffset = -2; colOffset <= 2; colOffset++) {
+            mark(row + rowOffset, col + colOffset);
+          }
+        }
+      }
+    }
+
+    for (let index = 0; index < 15; index++) {
+      if (index < 6) {
+        mark(index, 8);
+      } else if (index < 8) {
+        mark(index + 1, 8);
+      } else {
+        mark(dotCount - 15 + index, 8);
+      }
+
+      if (index < 8) {
+        mark(8, dotCount - index - 1);
+      } else if (index < 9) {
+        mark(8, 15 - index);
+      } else {
+        mark(8, 14 - index);
+      }
+    }
+
+    mark(dotCount - 8, 8);
+
+    if (version >= 7) {
+      for (let index = 0; index < 18; index++) {
+        mark(Math.floor(index / 3), (index % 3) + dotCount - 11);
+        mark((index % 3) + dotCount - 11, Math.floor(index / 3));
+      }
+    }
+
+    return reservedMatrix;
+  },
+
+  _findLogoCenterCell(dotCount, logoSize, reservedMatrix) {
+    const midpoint = (dotCount - 1) / 2;
+    const candidates = [];
+
+    for (let row = 0; row < dotCount; row++) {
+      for (let col = 0; col < dotCount; col++) {
+        candidates.push({
+          col,
+          row,
+          distance: (row - midpoint) ** 2 + (col - midpoint) ** 2,
+        });
+      }
+    }
+
+    candidates.sort((a, b) => a.distance - b.distance);
+
+    for (const candidate of candidates) {
+      if (this._logoFitsAtCell(candidate, dotCount, logoSize, reservedMatrix)) {
+        return candidate;
+      }
+    }
+
+    return null;
+  },
+
+  _logoFitsAtCell(centerCell, dotCount, logoSize, reservedMatrix) {
+    const halfLogoSize = logoSize / 2;
+    const halfLogoDots = halfLogoSize / CELL_SIZE;
+    const suppressionRadius = halfLogoSize + CELL_SIZE * DOT_RADIUS_FACTOR;
+    const maxOffset = Math.ceil(suppressionRadius / CELL_SIZE);
+
+    if (
+      centerCell.row + 0.5 - halfLogoDots < 0 ||
+      centerCell.col + 0.5 - halfLogoDots < 0 ||
+      centerCell.row + 0.5 + halfLogoDots > dotCount ||
+      centerCell.col + 0.5 + halfLogoDots > dotCount
+    ) {
+      return false;
+    }
+
+    for (
+      let row = Math.max(0, centerCell.row - maxOffset);
+      row <= Math.min(dotCount - 1, centerCell.row + maxOffset);
+      row++
+    ) {
+      for (
+        let col = Math.max(0, centerCell.col - maxOffset);
+        col <= Math.min(dotCount - 1, centerCell.col + maxOffset);
+        col++
+      ) {
+        if (!reservedMatrix[row][col]) {
+          continue;
+        }
+
+        const offsetX = (col - centerCell.col) * CELL_SIZE;
+        const offsetY = (row - centerCell.row) * CELL_SIZE;
+        // Circular check: would this reserved dot be suppressed by the clear zone?
+        // Rectangular check: is this reserved cell within the square logo bounding box?
+        // Both are needed because the logo is square — its corners reach ~1.41× the
+        // circular suppression radius, so corner cells would be missed by the circle alone.
+        if (
+          Math.hypot(offsetX, offsetY) < suppressionRadius ||
+          (Math.abs(offsetX) < halfLogoSize && Math.abs(offsetY) < halfLogoSize)
+        ) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   },
 
   /**
