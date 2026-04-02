@@ -32,34 +32,48 @@
   class MozFindbar extends MozXULElement {
     static get markup() {
       return `
-      <hbox anonid="findbar-container" class="findbar-container" flex="1" align="center">
-        <hbox anonid="findbar-textbox-wrapper" align="stretch">
+      <hbox anonid="findbar-container" class="findbar-container" align="center">
+        <hbox anonid="findbar-textbox-wrapper" class="findbar-textbox-wrapper" align="center">
           <html:input anonid="findbar-textbox" class="findbar-textbox" />
+          <html:span anonid="findbar-textbox-sizer" class="findbar-textbox-sizer" />
+        </hbox>
+        <hbox class="findbar-controls" align="center">
+          <label anonid="found-matches" class="findbar-label found-matches" hidden="true" />
+          <description anonid="find-status" control="findbar-textbox" class="findbar-label findbar-find-status" />
           <toolbarbutton anonid="find-previous" class="findbar-find-previous tabbable"
             data-l10n-attrs="tooltiptext" data-l10n-id="findbar-previous" disabled="true" />
           <toolbarbutton anonid="find-next" class="findbar-find-next tabbable"
             data-l10n-id="findbar-next" disabled="true" />
+          <html:div class="findbar-separator" role="separator" />
+          <toolbarbutton anonid="find-settings" class="findbar-settings tabbable"
+            data-l10n-attrs="tooltiptext" data-l10n-id="findbar-settings" />
         </hbox>
-        <checkbox anonid="highlight" class="findbar-highlight tabbable"
-          data-l10n-id="findbar-highlight-all2"/>
+      </hbox>
+      <toolbarbutton anonid="find-closebutton" class="findbar-closebutton tabbable close-icon"
+        data-l10n-id="findbar-find-button-close" hidden="true"/>
+      <panel anonid="findbar-settings-panel" class="findbar-settings-panel" noautofocus="true"
+        orient="vertical">
+        <html:div class="findbar-settings-header-row">
+          <html:span anonid="findbar-refine-matches" class="findbar-settings-header"
+            data-l10n-id="findbar-refine-matches" />
+        </html:div>
         <checkbox anonid="find-case-sensitive" class="findbar-case-sensitive tabbable"
           data-l10n-id="findbar-case-sensitive"/>
-        <checkbox anonid="find-match-diacritics" class="findbar-match-diacritics tabbable"
-          data-l10n-id="findbar-match-diacritics"/>
         <checkbox anonid="find-entire-word" class="findbar-entire-word tabbable"
           data-l10n-id="findbar-entire-word"/>
+        <checkbox anonid="find-match-diacritics" class="findbar-match-diacritics tabbable"
+          data-l10n-id="findbar-match-diacritics"/>
+        <html:hr class="findbar-settings-separator" />
+        <checkbox anonid="highlight" class="findbar-highlight tabbable"
+          data-l10n-id="findbar-highlight-all2"/>
         <label anonid="match-case-status" class="findbar-label"
           data-l10n-id="findbar-case-sensitive-status" hidden="true" />
         <label anonid="match-diacritics-status" class="findbar-label"
           data-l10n-id="findbar-match-diacritics-status" hidden="true" />
         <label anonid="entire-word-status" class="findbar-label"
           data-l10n-id="findbar-entire-word-status" hidden="true" />
-        <label anonid="found-matches" class="findbar-label found-matches" hidden="true" />
-        <image anonid="find-status-icon" class="find-status-icon" />
-        <description anonid="find-status" control="findbar-textbox" class="findbar-label findbar-find-status" />
-      </hbox>
-      <toolbarbutton anonid="find-closebutton" class="findbar-closebutton tabbable close-icon"
-        data-l10n-id="findbar-find-button-close"/>
+      </panel>
+      <image anonid="find-status-icon" class="find-status-icon" hidden="true" />
       `;
     }
 
@@ -91,12 +105,6 @@
       this.setAttribute("noanim", "true");
       this.hidden = true;
       this.appendChild(this.constructor.fragment);
-      if (AppConstants.platform == "macosx") {
-        this.insertBefore(
-          this.getElement("find-closebutton"),
-          this.getElement("findbar-container")
-        );
-      }
 
       /**
        * Please keep in sync with toolkit/modules/FindBarContent.sys.mjs
@@ -130,6 +138,7 @@
       this._foundMatches = this.getElement("found-matches");
       this._findStatusIcon = this.getElement("find-status-icon");
       this._findStatusDesc = this.getElement("find-status");
+      this._sizer = this.getElement("findbar-textbox-sizer");
 
       this._foundURL = null;
 
@@ -292,9 +301,19 @@
       this.getElement("find-entire-word").addEventListener("command", event =>
         this.toggleEntireWord(event.target.checked)
       );
-      this.getElement("find-closebutton").addEventListener("command", () =>
-        this.close()
-      );
+      this.getElement("find-settings").addEventListener("command", () => {
+        let panel = this.getElement("findbar-settings-panel");
+        let button = this.getElement("find-settings");
+        if (panel.state == "open") {
+          panel.hidePopup();
+        } else {
+          panel.openPopup(button, "after_end", 0, 0, false, false);
+        }
+      });
+
+      this._findField.addEventListener("input", () => {
+        this._resizeInput();
+      });
     }
 
     set findMode(val) {
@@ -577,25 +596,8 @@
      */
     _updateCaseSensitivity(str) {
       let val = str || this._findField.value;
-
       let caseSensitive = this._shouldBeCaseSensitive(val);
-      let checkbox = this.getElement("find-case-sensitive");
-      let statusLabel = this.getElement("match-case-status");
-      checkbox.checked = caseSensitive;
-
-      // Show the checkbox on the full Find bar in non-auto mode.
-      // Show the label in all other cases.
-      if (
-        this.findMode == this.FIND_NORMAL &&
-        (this._typeAheadCaseSensitive == 0 || this._typeAheadCaseSensitive == 1)
-      ) {
-        checkbox.hidden = false;
-        statusLabel.hidden = true;
-      } else {
-        checkbox.hidden = true;
-        statusLabel.hidden = !caseSensitive;
-      }
-
+      this.getElement("find-case-sensitive").checked = caseSensitive;
       this.browser.finder.caseSensitive = caseSensitive;
     }
 
@@ -630,25 +632,8 @@
      */
     _updateDiacriticMatching(str) {
       let val = str || this._findField.value;
-
       let matchDiacritics = this._shouldMatchDiacritics(val);
-      let checkbox = this.getElement("find-match-diacritics");
-      let statusLabel = this.getElement("match-diacritics-status");
-      checkbox.checked = matchDiacritics;
-
-      // Show the checkbox on the full Find bar in non-auto mode.
-      // Show the label in all other cases.
-      if (
-        this.findMode == this.FIND_NORMAL &&
-        (this._matchDiacritics == 0 || this._matchDiacritics == 1)
-      ) {
-        checkbox.hidden = false;
-        statusLabel.hidden = true;
-      } else {
-        checkbox.hidden = true;
-        statusLabel.hidden = !matchDiacritics;
-      }
-
+      this.getElement("find-match-diacritics").checked = matchDiacritics;
       this.browser.finder.matchDiacritics = matchDiacritics;
     }
 
@@ -677,20 +662,7 @@
      */
     _setEntireWord() {
       let entireWord = this._entireWord;
-      let checkbox = this.getElement("find-entire-word");
-      let statusLabel = this.getElement("entire-word-status");
-      checkbox.checked = entireWord;
-
-      // Show the checkbox on the full Find bar.
-      // Show the label in all other cases.
-      if (this.findMode == this.FIND_NORMAL) {
-        checkbox.hidden = false;
-        statusLabel.hidden = true;
-      } else {
-        checkbox.hidden = true;
-        statusLabel.hidden = !entireWord;
-      }
-
+      this.getElement("find-entire-word").checked = entireWord;
       this.browser.finder.entireWord = entireWord;
     }
 
@@ -731,6 +703,7 @@
       this._findFailedString = null;
 
       this._updateFindUI();
+      this._resizeInput();
       if (this.hidden) {
         Glean.findbar.shown.add(1);
         this.removeAttribute("noanim");
@@ -938,36 +911,26 @@
       ).disabled = !aEnable;
     }
 
+    _resizeInput() {
+      let field = this._findField;
+      let sizer = this._sizer;
+      sizer.style.font = window.getComputedStyle(field).font;
+      sizer.textContent = field.value;
+      let width = sizer.offsetWidth;
+      field.style.width = width ? width + 10 + "px" : "";
+    }
+
     /**
      * Determines whether minimalist or general-purpose search UI is to be
      * displayed when the find bar is activated.
      */
     _updateFindUI() {
-      let showMinimalUI = this.findMode != this.FIND_NORMAL;
-
-      let nodes = this.getElement("findbar-container").children;
-      let wrapper = this.getElement("findbar-textbox-wrapper");
       let foundMatches = this._foundMatches;
-      for (let node of nodes) {
-        if (node == wrapper || node == foundMatches) {
-          continue;
-        }
-        node.hidden = showMinimalUI;
-      }
-      this.getElement("find-next").hidden = this.getElement(
-        "find-previous"
-      ).hidden = showMinimalUI;
-      foundMatches.hidden = showMinimalUI || !foundMatches.value;
+      foundMatches.hidden = !foundMatches.value;
       this._updateCaseSensitivity();
       this._updateDiacriticMatching();
       this._setEntireWord();
       this._setHighlightAll();
-
-      if (showMinimalUI) {
-        this._findField.classList.add("minimal");
-      } else {
-        this._findField.classList.remove("minimal");
-      }
 
       let l10nId;
       if (this.findMode == this.FIND_TYPEAHEAD) {
@@ -1358,6 +1321,7 @@
 
       if (selectionString) {
         this._findField.value = selectionString;
+        this._resizeInput();
       }
 
       if (isInitialSelection) {

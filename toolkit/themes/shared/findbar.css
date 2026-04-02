@@ -5,117 +5,144 @@
 @namespace xul url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 @namespace html url("http://www.w3.org/1999/xhtml");
 
+/* Floating findbar pill */
+
 xul|findbar {
-  border-top: 1px solid ThreeDShadow;
-  min-width: 1px;
-  transition-property: margin-bottom, visibility;
-  transition-duration: 150ms, 0s;
-  transition-timing-function: ease-in-out, linear;
-  padding-block: 6px;
-  background-color: -moz-dialog;
-  color: -moz-dialogtext;
+  display: flex;
+  position: absolute;
+  inset-block-start: -8px;
+  inset-inline-end: 8px;
+  z-index: 1;
+  width: 440px;
+  max-width: calc(100% - 16px);
+  background-color: light-dark(white, hsl(240, 3%, 18%));
+  border: 1px solid light-dark(rgba(33, 3, 64, 0.2), rgba(255, 255, 255, 0.15));
+  border-radius: 12px;
+  box-shadow: 0 0 14px rgba(117, 67, 227, 0.24);
+  padding: 0;
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: opacity 150ms ease-in-out;
+  }
 
   &:where([hidden]) {
-    /* Override display:none to make the transition work. */
+    /* Override display:none to allow transition. */
     display: flex;
-    margin-bottom: calc(-1 * (28px + 12px + 1px)); /* findbar-container's height + padding-block + top border */
-    visibility: collapse;
-    transition-delay: 0s, 150ms;
-
-    > .findbar-container,
-    > .findbar-closebutton {
-      opacity: 0;
-    }
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transition-duration: 0s;
   }
 
-  @media (prefers-reduced-motion) {
+  &[noanim] {
     transition-duration: 0s;
-    transition-delay: 0s;
-  }
-
-  &[noanim],
-  &[noanim] > .findbar-container,
-  &[noanim] > .findbar-closebutton,
-  /* When letterboxing is in use, we do not transition to avoid layout jank.
-   * This has an additional benefit that the find bar cannot be used to
-   * fingerprint prefers-reduced-motion. */
-  #tabbrowser-tabpanels.letterboxing > .browserSidebarContainer > .browserContainer > & {
-    transition-duration: 0s;
-    transition-delay: 0s;
   }
 }
+
+/* Main container */
 
 .findbar-container {
-  margin-inline-start: 8px;
-  height: 28px;
-  overflow-inline: hidden; /* Ensures the close button stays visible. */
-  transition: opacity 150ms ease-in-out;
+  width: 100%;
+  padding: 8px 16px;
+  gap: 8px;
+  min-width: 0;
 }
 
-/* Remove start margin when close button is on the left side (on macOS) */
-.findbar-closebutton + .findbar-container {
-  margin-inline-start: 0;
+/* Text input wrapper */
+
+.findbar-textbox-wrapper {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  padding: 2px 4px;
+  border-radius: var(--border-radius-small);
 }
 
-/* Search field */
+/* Auto-resize input */
 
 .findbar-textbox {
   appearance: none;
-  background-color: var(--input-bgcolor, var(--toolbar-field-background-color));
-  color: var(--input-color, var(--toolbar-field-color));
-  border: 1px solid var(--input-border-color);
-  border-radius: var(--border-radius-small);
+  background-color: transparent;
+  color: var(--text-color);
+  border: none;
   outline: none;
   margin: 0;
-  padding: 2px 5px;
-  padding-inline-start: 8px;
-  width: 18em;
-  box-sizing: border-box;
+  padding: 0;
+  font-size: 15px;
+  min-width: 4em;
+  max-width: 100%;
 
   &::placeholder {
-    opacity: 0.69;
+    color: var(--text-color-deemphasized);
+    opacity: 1;
   }
 
-  &:focus {
-    background-color: var(--toolbar-field-focus-background-color);
-    color: var(--toolbar-field-focus-color);
-    border-color: transparent;
-    outline: var(--focus-outline);
-    outline-offset: var(--focus-outline-inset);
-    outline-color: var(--toolbar-field-focus-border-color);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.23);
+  &:not(:placeholder-shown) {
+    background-color: var(--color-purple-10, #e6d7f5);
+    border-radius: var(--border-radius-small);
+    padding: 2px 4px;
   }
 
-  :root[lwtheme] &::selection {
-    background-color: var(--lwt-toolbar-field-highlight, Highlight);
-    color: var(--lwt-toolbar-field-highlight-text, HighlightText);
-  }
-
-  :root[lwtheme] &:not(:focus)::selection {
-    background-color: var(--lwt-toolbar-field-highlight, text-select-background-disabled);
-  }
-
-  &[status="notfound"] {
-    background-color: rgba(226, 40, 80, 0.3);
-    color: inherit;
+  &[status="notfound"]:not(:placeholder-shown) {
+    background-color: rgba(226, 40, 80, 0.15);
   }
 
   &[flash="true"] {
     background-color: rgba(255, 233, 0, 0.3);
-    color: inherit;
   }
 }
 
-/* Previous/next buttons */
+/* Hidden sizer span used to measure input content width */
+
+.findbar-textbox-sizer {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+  pointer-events: none;
+  font-size: 15px;
+}
+
+/* Right-side controls */
+
+.findbar-controls {
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+/* Match count and status labels */
+
+.found-matches,
+.findbar-find-status {
+  color: var(--text-color-deemphasized);
+  font-size: 15px;
+  margin: 0;
+  padding: 0 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.findbar-find-status[status="notfound"] {
+  color: var(--text-color-error);
+  font-weight: normal;
+}
+
+/* Navigation buttons (previous / next) */
 
 .findbar-find-previous,
-.findbar-find-next {
+.findbar-find-next,
+.findbar-settings {
   appearance: none;
-  padding: 4px 7px;
-  -moz-context-properties: fill;
-  fill: var(--toolbarbutton-icon-fill);
-  color: inherit;
-  border-radius: var(--border-radius-small);
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-circle);
+  padding: 8px;
+  width: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  -moz-context-properties: fill, fill-opacity;
+  fill: currentColor;
+  fill-opacity: 0.85;
+  color: var(--text-color);
 
   &:focus-visible {
     outline: var(--focus-outline);
@@ -123,64 +150,80 @@ xul|findbar {
   }
 
   &:not([disabled]):hover {
-    background-color: var(--toolbarbutton-hover-background, rgba(190, 190, 190, 0.2));
+    background-color: color-mix(in srgb, currentColor 10%, transparent);
   }
 
   &:not([disabled]):hover:active {
-    background-color: var(--toolbarbutton-active-background, rgba(190, 190, 190, 0.4));
+    background-color: color-mix(in srgb, currentColor 20%, transparent);
   }
 
-  &[disabled="true"] > .toolbarbutton-icon {
-    opacity: var(--toolbarbutton-disabled-opacity);
+  &[disabled] {
+    opacity: 0.5;
   }
 }
 
 .findbar-find-previous {
   list-style-image: url(chrome://global/skin/icons/arrow-up.svg);
-  margin-inline: 8px 0;
 }
 
 .findbar-find-next {
   list-style-image: url(chrome://global/skin/icons/arrow-down.svg);
-  margin-inline: 0 8px;
 }
 
-/* Checkboxes & Labels */
+.findbar-settings {
+  list-style-image: url(chrome://global/skin/icons/more.svg);
+}
 
-.findbar-container > checkbox,
-.findbar-label {
-  margin: 0 8px;
+/* Vertical separator between nav buttons and settings */
+
+.findbar-separator {
+  width: 1px;
+  height: 30px;
+  background-color: light-dark(rgba(33, 3, 64, 0.15), rgba(255, 255, 255, 0.15));
   flex-shrink: 0;
 }
 
-.findbar-find-status,
-.found-matches {
-  margin-inline-start: 12px;
-}
+/* Hide legacy close button (replaced by Escape key) */
 
-.findbar-find-status[status="notfound"] {
-  font-weight: bold;
-}
-
-.find-status-icon {
+.findbar-closebutton {
   display: none;
 }
 
-/* Close button */
+/* Settings panel popup */
 
-/* Increase specificity to override close-icon.css */
-.close-icon.findbar-closebutton {
-  margin: 2px 8px;
-  width: 24px;
-  fill: var(--toolbarbutton-icon-fill);
-  transition: opacity 150ms ease-in-out;
+.findbar-settings-panel {
+  padding: 8px;
+  min-width: 260px;
+}
+
+.findbar-settings-header-row {
+  padding: 4px 12px;
+  opacity: 0.7;
+}
+
+.findbar-settings-header {
+  font-size: 13px;
+  color: var(--text-color);
+}
+
+.findbar-settings-panel > xul|checkbox {
+  padding: 6px 12px;
+  border-radius: var(--border-radius-medium);
+  margin: 0;
 
   &:hover {
-    background-color: var(--toolbarbutton-hover-background, rgba(190, 190, 190, 0.2));
-    outline: none;
+    background-color: color-mix(in srgb, currentColor 8%, transparent);
   }
+}
 
-  &:hover:active {
-    background-color: var(--toolbarbutton-active-background, rgba(190, 190, 190, 0.4));
-  }
+.findbar-settings-separator {
+  border: none;
+  border-top: 1px solid light-dark(var(--color-gray-30, #cfcfd8), rgba(255, 255, 255, 0.15));
+  margin: 4px 8px;
+}
+
+/* Status icon - hidden in new design */
+
+.find-status-icon {
+  display: none;
 }

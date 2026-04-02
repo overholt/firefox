@@ -831,7 +831,7 @@
       let findBar = document.createXULElement("findbar");
       let browser = this.getBrowserForTab(aTab);
 
-      browser.parentNode.insertAdjacentElement("afterend", findBar);
+      browser.parentNode.parentNode.parentNode.appendChild(findBar);
 
       await new Promise(r => requestAnimationFrame(r));
       delete aTab._pendingFindBar;

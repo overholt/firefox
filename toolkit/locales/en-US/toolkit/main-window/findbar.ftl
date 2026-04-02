@@ -12,6 +12,11 @@ findbar-previous =
 findbar-find-button-close =
     .tooltiptext = Close find bar
 
+findbar-settings =
+    .tooltiptext = Search options
+
+findbar-refine-matches = Refine matches
+
 findbar-highlight-all2 =
     .label = Highlight All
     .accesskey = { PLATFORM() ->
@@ -35,7 +40,7 @@ findbar-entire-word =
     .accesskey = W
     .tooltiptext = Search whole words only
 
-findbar-not-found = Phrase not found
+findbar-not-found = no matches
 
 findbar-wrapped-to-top = Reached end of page, continued from top
 findbar-wrapped-to-bottom = Reached top of page, continued from bottom
