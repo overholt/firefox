@@ -76,6 +76,18 @@ export class QRCodeWorker extends BasePromiseWorker {
   }
 
   /**
+   * Render the QR body in the worker and return a PNG data URI for the main
+   * thread to composite with the Firefox logo.
+   *
+   * @param {string} url - The URL to encode in the QR code
+   * @param {string} errorCorrectionLevel - Error correction level (L, M, Q, H)
+   * @returns {Promise<{src: string, width: number, height: number, dotCount: number}>}
+   */
+  async generateStyledQRCode(url, errorCorrectionLevel = "H") {
+    return this.post("generateStyledQRCode", [url, errorCorrectionLevel]);
+  }
+
+  /**
    * Terminate the worker and clean up resources
    */
   async terminate() {

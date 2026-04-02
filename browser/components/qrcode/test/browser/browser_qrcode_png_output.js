@@ -50,6 +50,42 @@ const isNearWhite = ({ r, g, b }) => r > 200 && g > 200 && b > 200;
 const getLogoPlacement = dotCount =>
   QRCodeGenerator.getLogoPlacement(dotCount, MARGIN);
 
+add_task(async function test_worker_generateStyledQRCode_png() {
+  const worker = new QRCodeWorker();
+  let result;
+  try {
+    result = await worker.generateStyledQRCode(TEST_URL, "H");
+  } finally {
+    await worker.terminate();
+  }
+
+  Assert.ok(
+    result.src.startsWith("data:image/svg+xml"),
+    "Worker should return a stylized SVG data URI"
+  );
+  Assert.greater(
+    result.dotCount,
+    0,
+    "Worker should return a positive dotCount"
+  );
+  Assert.equal(
+    result.width,
+    result.height,
+    "Worker-rendered QR body should be square"
+  );
+  Assert.strictEqual(
+    (result.width - 2 * MARGIN) % CELL_SIZE,
+    0,
+    "Worker-rendered width should fit the module grid"
+  );
+
+  Assert.greater(
+    result.src.length,
+    "data:image/svg+xml;charset=utf-8,".length,
+    "Worker SVG data URI should include image payload"
+  );
+});
+
 add_task(async function test_qrcode_png_dimensions_and_background() {
   const { width, height, getPixel } = await renderToSamplingCanvas(TEST_URL);
 
